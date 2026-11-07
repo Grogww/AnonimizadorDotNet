@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# Um push novo no mesmo PR ou branch cancela a execução anterior.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  build-test:
+    name: Build e testes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # O global.json não fixa SDK (só ativa a Microsoft.Testing.Platform), então a
+      # versão vem daqui. O SDK 10 compila a solução e roda `dotnet test --solution`;
+      # o SDK 8 traz o runtime net8.0 para executar os testes nesse alvo.
+      - name: Instalar .NET 8 e 10
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Informações do .NET
+        run: dotnet --info
+
+      - name: Restore
+        run: dotnet restore AnonimizadorDotNet.slnx
+
+      - name: Build
+        run: dotnet build AnonimizadorDotNet.slnx --configuration Release --no-restore
+
+      # Provisório: enquanto a main não tiver testes, a Microsoft.Testing.Platform
+      # encerra com o código 8 ("nenhum teste executado"). Remover o
+      # `--ignore-exit-code 8` assim que os primeiros testes chegarem à main.
+      - name: Testes (net8.0 e net10.0)
+        run: dotnet test --solution AnonimizadorDotNet.slnx --configuration Release --no-build --ignore-exit-code 8
