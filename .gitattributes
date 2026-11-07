@@ -1,0 +1,4 @@
+# Normaliza finais de linha no repositório; o checkout usa o padrão do sistema.
+* text=auto
+
+*.sh text eol=lf

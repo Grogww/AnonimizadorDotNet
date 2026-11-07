@@ -1,0 +1,25 @@
+<Project>
+
+  <!-- Central Package Management: as versões ficam só aqui; os .csproj declaram o pacote sem versão. -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <!-- Ferramentas de build (não viram dependência do pacote) -->
+  <ItemGroup>
+    <PackageVersion Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="5.6.0" />
+  </ItemGroup>
+
+  <!-- Testes -->
+  <ItemGroup>
+    <PackageVersion Include="xunit.v3" Version="4.0.2" />
+    <!-- CsCheck 5 só suporta net10+; a linha 4.x ainda roda em net8.0, alvo da lib. -->
+    <PackageVersion Include="CsCheck" Version="4.9.1" />
+  </ItemGroup>
+
+  <!-- Benchmarks -->
+  <ItemGroup>
+    <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
+  </ItemGroup>
+
+</Project>

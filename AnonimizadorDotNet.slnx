@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="src/AnonimizadorDotNet/AnonimizadorDotNet.csproj" />
+  <Project Path="tests/AnonimizadorDotNet.Tests/AnonimizadorDotNet.Tests.csproj" />
+  <Project Path="benchmarks/AnonimizadorDotNet.Benchmarks/AnonimizadorDotNet.Benchmarks.csproj" />
+</Solution>

@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Os testes rodam nos dois runtimes LTS suportados. -->
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <!-- xUnit v3 gera um executável por projeto de testes. -->
+    <OutputType>Exe</OutputType>
+    <!--
+      CA2007: o xUnit pede que testes NÃO usem ConfigureAwait(false) (regra xUnit1030).
+      CA1707: nomes de teste costumam usar sublinhado (Metodo_Cenario_Resultado).
+    -->
+    <NoWarn>$(NoWarn);CA2007;CA1707</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="CsCheck" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\AnonimizadorDotNet\AnonimizadorDotNet.csproj" />
+  </ItemGroup>
+
+</Project>
