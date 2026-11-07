@@ -489,3 +489,6 @@ $RECYCLE.BIN/
 # Instruções locais do assistente de desenvolvimento (não versionadas)
 CLAUDE.md
 .claude/
+
+# Checklist de trabalho local da v1 (não versionada)
+docs/checklist-v1.md
