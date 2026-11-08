@@ -47,8 +47,6 @@ jobs:
       - name: Build
         run: dotnet build AnonimizadorDotNet.slnx --configuration Release --no-restore
 
-      # Provisório: enquanto a main não tiver testes, a Microsoft.Testing.Platform
-      # encerra com o código 8 ("nenhum teste executado"). Remover o
-      # `--ignore-exit-code 8` assim que os primeiros testes chegarem à main.
+      # Sem `--ignore-exit-code 8`: se nenhum teste for executado, a CI falha.
       - name: Testes (net8.0 e net10.0)
-        run: dotnet test --solution AnonimizadorDotNet.slnx --configuration Release --no-build --ignore-exit-code 8
+        run: dotnet test --solution AnonimizadorDotNet.slnx --configuration Release --no-build

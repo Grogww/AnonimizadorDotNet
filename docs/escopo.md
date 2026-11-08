@@ -50,6 +50,15 @@ produto para usos mais amplos e para a publicação externa. O que não está na
 | Chave secreta | Valor direto ou variável de ambiente |
 | Qualidade | Cuidados de pacote público desde o início (ver seção própria) |
 
+### Andamento da v1
+
+| Etapa | Estado |
+|---|---|
+| Infraestrutura (solução, analisadores, CPM, testes, CI no GitHub Actions) | Concluída |
+| 1. FF1 sobre AES (`Cryptography/Primitives`, `Cryptography/Fpe`) | Concluída: vetores oficiais do NIST, teste diferencial contra o BouncyCastle (só nos testes), bijeção exaustiva e testes de propriedade |
+| 2. Subchaves por tipo, seleção por HMAC e *cycle-walking* | Próxima |
+| 3–9. Documentos, transformação, detecção, classificação, JSON, sessão e API pública | Não iniciadas |
+
 ### Depois da v1
 
 - **v1.x:** CEP, data de nascimento, cartão, endereço, identificador genérico; CSV e `IDataReader`;
