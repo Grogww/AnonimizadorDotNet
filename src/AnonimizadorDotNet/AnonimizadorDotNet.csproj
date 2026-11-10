@@ -5,6 +5,11 @@
     <RootNamespace>AnonimizadorDotNet</RootNamespace>
   </PropertyGroup>
 
+  <!-- Dicionários embutidos (nomes, provedores de e-mail, domínios), lidos por EmbeddedLists. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\*.txt" LogicalName="AnonimizadorDotNet.Resources.%(Filename)%(Extension)" />
+  </ItemGroup>
+
   <ItemGroup>
     <InternalsVisibleTo Include="AnonimizadorDotNet.Tests" />
     <InternalsVisibleTo Include="AnonimizadorDotNet.Benchmarks" />
