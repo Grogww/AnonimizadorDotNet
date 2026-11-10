@@ -56,8 +56,9 @@ produto para usos mais amplos e para a publicação externa. O que não está na
 |---|---|
 | Infraestrutura (solução, analisadores, CPM, testes, CI no GitHub Actions) | Concluída |
 | 1. FF1 sobre AES (`Cryptography/Primitives`, `Cryptography/Fpe`) | Concluída: vetores oficiais do NIST, teste diferencial contra o BouncyCastle (só nos testes), bijeção exaustiva e testes de propriedade |
-| 2. Subchaves por tipo, seleção por HMAC e *cycle-walking* | Próxima |
-| 3–9. Documentos, transformação, detecção, classificação, JSON, sessão e API pública | Não iniciadas |
+| 2. Subchaves por tipo, seleção por HMAC e *cycle-walking* (`Cryptography/Keys`, `Cryptography/Selection`, `Cryptography/Fpe`) | Concluída: HKDF-SHA256 com rótulos versionados e valores dourados, seleção sem viés de módulo, *cycle-walking* com bijeção exaustiva no subconjunto permitido |
+| 3. Documentos | Próxima |
+| 4–9. Transformação, detecção, classificação, JSON, sessão e API pública | Não iniciadas |
 
 ### Depois da v1
 

@@ -26,6 +26,8 @@ Itens fora do escopo da v1. Cada item deve virar uma issue quando o repositório
 - Relatório de auditoria por execução (campos classificados, regra aplicada, contagem por tipo), sem
   valores originais.
 - Provedores de chave adicionais: arquivo, user-secrets, provedor plugável.
+- Chave mestra a partir de senha digitada (baixa entropia): derivar com PBKDF2 ou Argon2 e salt
+  armazenado. Na v1 a chave mestra precisa ter ao menos 32 bytes aleatórios, e o HKDF usa salt vazio.
 
 ### Restauração
 
