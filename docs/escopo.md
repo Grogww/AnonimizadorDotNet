@@ -57,7 +57,7 @@ produto para usos mais amplos e para a publicação externa. O que não está na
 | Infraestrutura (solução, analisadores, CPM, testes, CI no GitHub Actions) | Concluída |
 | 1. FF1 sobre AES (`Cryptography/Primitives`, `Cryptography/Fpe`) | Concluída: vetores oficiais do NIST, teste diferencial contra o BouncyCastle (só nos testes), bijeção exaustiva e testes de propriedade |
 | 2. Subchaves por tipo, seleção por HMAC e *cycle-walking* (`Cryptography/Keys`, `Cryptography/Selection`, `Cryptography/Fpe`) | Concluída: HKDF-SHA256 com rótulos versionados e valores dourados, seleção sem viés de módulo, *cycle-walking* com bijeção exaustiva no subconjunto permitido |
-| 3. Documentos | Próxima |
+| 3. Documentos (`Documents`, `Resources`) | Concluída: CPF, CNPJ numérico e alfanumérico, telefone, nome e e-mail, com representação original, valores proibidos e dicionários embutidos |
 | 4–9. Transformação, detecção, classificação, JSON, sessão e API pública | Não iniciadas |
 
 ### Depois da v1
@@ -145,9 +145,15 @@ Notas:
 Nome e e-mail usam seleção determinística derivada de **HMAC-SHA256** (chave secreta + valor normalizado)
 sobre dicionários embutidos. Colisões aqui são toleráveis.
 
-- **Nome:** prenome + sobrenomes escolhidos do dicionário pelo HMAC.
+- **Nome:** prenome + sobrenomes escolhidos do dicionário pelo HMAC, mantendo o número de partes, as
+  partículas ("da", "dos"…) e sufixos ("Filho", "Júnior"…), a caixa, o uso de acentos e o sexo do prenome
+  quando ele está no dicionário.
 - **E-mail:** parte local substituída; domínio de provedor público (gmail.com, outlook.com…) preservado;
-  domínio corporativo substituído deterministicamente.
+  domínio corporativo substituído deterministicamente por um nome fictício, mantendo o sufixo (`com.br`,
+  `gov.br`…). A parte local substituta segue o estilo da original (separador e dígitos no fim) e a
+  etiqueta depois do `+` é descartada. Um domínio fictício pode coincidir com um real, como no CPF.
+- **Dicionários:** seleção própria do projeto, guiada pelas frequências de nomes do IBGE (ver `NOTICE`);
+  nenhum arquivo de terceiros é copiado. A ordem dos itens faz parte do contrato: itens novos vão no fim.
 
 ### Chave secreta
 

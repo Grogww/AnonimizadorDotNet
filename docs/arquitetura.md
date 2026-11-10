@@ -104,3 +104,21 @@ Consequências:
   `Json`, sem alterar as camadas de baixo.
 - **Subchave por tipo:** a chave mestra é derivada em uma subchave por tipo de documento, para que o mesmo
   número cifrado como CPF e como telefone use permutações independentes.
+
+### `Documents`
+
+Uma subpasta por tipo, cada uma com um `XxxFormat` estático (`TryParse` e `Format`) e um `ParsedXxx` com o
+valor normalizado. `TryParse` nunca lança exceção por causa do conteúdo e recusa valores proibidos; `Format`
+recalcula os verificadores e reaplica a representação original. Nenhum `ParsedXxx` sobrescreve `ToString()`.
+
+| Subpasta | Conteúdo |
+|---|---|
+| `Formatting` | `TextLayout` (máscara, texto ou número, zeros à esquerda; guarda só os separadores), `Numerals` (caracteres ↔ numerais em base 10 e 36), `LetterCasing`, `TextNormalization` (chave sem acentos e em maiúsculas) |
+| `CheckDigits` | `Modulo11`, comum a CPF e CNPJ |
+| `Cpf` | Base de 9 numerais; proíbe dígitos todos iguais |
+| `Cnpj` | Raiz de 8 posições em base 10 ou 36, ordem preservada, verificadores com valor ASCII − 48 |
+| `Phone` | DDD validado; 7 dígitos finais cifrados, o resto preservado |
+| `Name` | Partes (prenome, sobrenome, inicial, partícula, sufixo), caixa, acentos e sexo do prenome |
+| `Email` | Parte local, domínio e sufixo; provedores públicos preservados; estilo da parte local |
+
+A cifra e a seleção por HMAC não entram aqui: a camada `Transformation` (etapa 4) junta as duas pontas.
