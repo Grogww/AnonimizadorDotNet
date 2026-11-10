@@ -151,7 +151,8 @@ sobre dicionários embutidos. Colisões aqui são toleráveis.
 - **E-mail:** parte local substituída; domínio de provedor público (gmail.com, outlook.com…) preservado;
   domínio corporativo substituído deterministicamente por um nome fictício, mantendo o sufixo (`com.br`,
   `gov.br`…). A parte local substituta segue o estilo da original (separador e dígitos no fim) e a
-  etiqueta depois do `+` é descartada. Um domínio fictício pode coincidir com um real, como no CPF.
+  etiqueta depois do `+` é descartada: endereços que só diferem por ela (`joao+promo@…` e `joao@…`)
+  recebem o mesmo substituto. Um domínio fictício pode coincidir com um real, como no CPF.
 - **Dicionários:** seleção própria do projeto, guiada pelas frequências de nomes do IBGE (ver `NOTICE`);
   nenhum arquivo de terceiros é copiado. A ordem dos itens faz parte do contrato: itens novos vão no fim.
 
