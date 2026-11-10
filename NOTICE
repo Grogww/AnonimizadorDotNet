@@ -2,3 +2,7 @@ AnonimizadorDotNet
 Copyright 2026 Eduardo Fritsch Silva
 
 Este produto é distribuído sob a Apache License, Version 2.0 (ver arquivo LICENSE).
+
+Os dicionários de prenomes e sobrenomes em src/AnonimizadorDotNet/Resources são uma seleção do projeto,
+orientada pelas frequências de nomes publicadas pelo Instituto Brasileiro de Geografia e Estatística (IBGE),
+Censo Demográfico. Nenhum arquivo de terceiros foi copiado.

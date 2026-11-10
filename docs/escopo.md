@@ -57,7 +57,7 @@ produto para usos mais amplos e para a publicação externa. O que não está na
 | Infraestrutura (solução, analisadores, CPM, testes, CI no GitHub Actions) | Concluída |
 | 1. FF1 sobre AES (`Cryptography/Primitives`, `Cryptography/Fpe`) | Concluída: vetores oficiais do NIST, teste diferencial contra o BouncyCastle (só nos testes), bijeção exaustiva e testes de propriedade |
 | 2. Subchaves por tipo, seleção por HMAC e *cycle-walking* (`Cryptography/Keys`, `Cryptography/Selection`, `Cryptography/Fpe`) | Concluída: HKDF-SHA256 com rótulos versionados e valores dourados, seleção sem viés de módulo, *cycle-walking* com bijeção exaustiva no subconjunto permitido |
-| 3. Documentos | Próxima |
+| 3. Documentos (`Documents`, `Resources`) | Concluída: CPF, CNPJ numérico e alfanumérico, telefone, nome e e-mail, com representação original, valores proibidos e dicionários embutidos |
 | 4–9. Transformação, detecção, classificação, JSON, sessão e API pública | Não iniciadas |
 
 ### Depois da v1
@@ -118,10 +118,12 @@ então é determinística, não tem colisões e é reversível com a chave.
 
 | Documento | Parte cifrada | Parte preservada / recalculada |
 |---|---|---|
-| CPF | 9 dígitos da base | dígitos verificadores recalculados |
-| CNPJ numérico | raiz (8 dígitos) | ordem (`0001` = matriz) preservada; DVs recalculados |
-| CNPJ alfanumérico (vigente desde jul/2026) | raiz (8 posições, base 36) | ordem preservada; DVs recalculados (valor do caractere = ASCII − 48) |
-| Telefone | 8 dígitos finais | DDD e o 9 inicial de celular preservados |
+| CPF | 9 dígitos da base | dígitos verificadores recalculados; dígitos todos iguais proibidos |
+| CNPJ numérico | raiz (8 dígitos) | ordem (`0001` = matriz) preservada; DVs recalculados; raiz com dígitos todos iguais proibida |
+| CNPJ alfanumérico (vigente desde jul/2026) | raiz (8 posições, base 36) | ordem preservada; DVs recalculados (valor do caractere = ASCII − 48); raiz sem letra proibida |
+| Telefone | 7 dígitos finais | código do país, DDD, o 9 do celular e o primeiro dígito do assinante preservados |
+
+Valores proibidos também são recusados na entrada (um `111.111.111-11` não é tratado como CPF).
 
 Notas:
 
@@ -132,6 +134,9 @@ Notas:
 - CNPJ numérico gera CNPJ numérico (não quebra campos `bigint`/`numeric`). Para CNPJ alfanumérico,
   aplica-se *cycle-walking* para garantir que a saída contenha ao menos uma letra e não colida com o
   domínio numérico.
+- No telefone, o primeiro dígito do assinante distingue fixo (2 a 5) de celular; preservá-lo mantém o
+  substituto na mesma faixa sem *cycle-walking*, inclusive para celulares antigos de 8 dígitos (6 a 9).
+  Os 7 dígitos restantes (10⁷) ficam acima do domínio mínimo do FF1. O DDD precisa ser um dos 67 em uso.
 - Um CPF fictício válido pode coincidir com o CPF de alguma pessoa real. Isso é inerente a gerar documentos
   válidos e deve constar na documentação.
 
@@ -140,9 +145,16 @@ Notas:
 Nome e e-mail usam seleção determinística derivada de **HMAC-SHA256** (chave secreta + valor normalizado)
 sobre dicionários embutidos. Colisões aqui são toleráveis.
 
-- **Nome:** prenome + sobrenomes escolhidos do dicionário pelo HMAC.
+- **Nome:** prenome + sobrenomes escolhidos do dicionário pelo HMAC, mantendo o número de partes, as
+  partículas ("da", "dos"…) e sufixos ("Filho", "Júnior"…), a caixa, o uso de acentos e o sexo do prenome
+  quando ele está no dicionário.
 - **E-mail:** parte local substituída; domínio de provedor público (gmail.com, outlook.com…) preservado;
-  domínio corporativo substituído deterministicamente.
+  domínio corporativo substituído deterministicamente por um nome fictício, mantendo o sufixo (`com.br`,
+  `gov.br`…). A parte local substituta segue o estilo da original (separador e dígitos no fim) e a
+  etiqueta depois do `+` é descartada: endereços que só diferem por ela (`joao+promo@…` e `joao@…`)
+  recebem o mesmo substituto. Um domínio fictício pode coincidir com um real, como no CPF.
+- **Dicionários:** seleção própria do projeto, guiada pelas frequências de nomes do IBGE (ver `NOTICE`);
+  nenhum arquivo de terceiros é copiado. A ordem dos itens faz parte do contrato: itens novos vão no fim.
 
 ### Chave secreta
 
