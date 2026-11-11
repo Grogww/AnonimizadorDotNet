@@ -22,9 +22,12 @@ namespace AnonimizadorDotNet.Transformation.Email;
 /// </para>
 /// <para>Seguro para uso por várias threads ao mesmo tempo.</para>
 /// </remarks>
-internal sealed class EmailTransformer : IDisposable
+internal sealed class EmailTransformer : IValueTransformer, IDisposable
 {
     private readonly SecretKey _key;
+
+    /// <inheritdoc/>
+    public string Type => DocumentTypeNames.Email;
 
     /// <summary>Cria o transformador com a subchave de e-mail do chaveiro.</summary>
     public EmailTransformer(KeyRing keys)
@@ -77,6 +80,11 @@ internal sealed class EmailTransformer : IDisposable
         substitute = EmailFormat.Format(email, localPart, domainName);
         return true;
     }
+
+    /// <inheritdoc/>
+    /// <remarks>A forma de chegada não muda o resultado: um número nunca é um valor deste tipo.</remarks>
+    public bool TryTransform(ReadOnlySpan<char> value, ValueKind kind, [NotNullWhen(true)] out string? substitute) =>
+        TryTransform(value, out substitute);
 
     /// <summary>Zera a subchave.</summary>
     public void Dispose() => _key.Dispose();

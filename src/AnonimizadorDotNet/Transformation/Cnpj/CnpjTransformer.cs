@@ -3,7 +3,6 @@ using System.Security.Cryptography;
 using AnonimizadorDotNet.Cryptography.Fpe;
 using AnonimizadorDotNet.Cryptography.Keys;
 using AnonimizadorDotNet.Documents.Cnpj;
-using AnonimizadorDotNet.Documents.Formatting;
 
 namespace AnonimizadorDotNet.Transformation.Cnpj;
 
@@ -18,10 +17,13 @@ namespace AnonimizadorDotNet.Transformation.Cnpj;
 /// </para>
 /// <para>Seguro para uso por várias threads ao mesmo tempo.</para>
 /// </remarks>
-internal sealed class CnpjTransformer : IDisposable
+internal sealed class CnpjTransformer : IValueTransformer, IDisposable
 {
     private readonly Ff1Pool _numeric;
     private readonly Ff1Pool _alphanumeric;
+
+    /// <inheritdoc/>
+    public string Type => DocumentTypeNames.Cnpj;
 
     /// <summary>Cria o transformador com as subchaves de CNPJ do chaveiro.</summary>
     public CnpjTransformer(KeyRing keys)

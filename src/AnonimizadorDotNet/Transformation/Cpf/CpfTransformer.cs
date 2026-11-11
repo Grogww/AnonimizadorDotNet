@@ -3,7 +3,6 @@ using System.Security.Cryptography;
 using AnonimizadorDotNet.Cryptography.Fpe;
 using AnonimizadorDotNet.Cryptography.Keys;
 using AnonimizadorDotNet.Documents.Cpf;
-using AnonimizadorDotNet.Documents.Formatting;
 
 namespace AnonimizadorDotNet.Transformation.Cpf;
 
@@ -16,9 +15,12 @@ namespace AnonimizadorDotNet.Transformation.Cpf;
 /// </para>
 /// <para>Seguro para uso por várias threads ao mesmo tempo.</para>
 /// </remarks>
-internal sealed class CpfTransformer : IDisposable
+internal sealed class CpfTransformer : IValueTransformer, IDisposable
 {
     private readonly Ff1Pool _pool;
+
+    /// <inheritdoc/>
+    public string Type => DocumentTypeNames.Cpf;
 
     /// <summary>Cria o transformador com a subchave de CPF do chaveiro.</summary>
     public CpfTransformer(KeyRing keys)

@@ -2,7 +2,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
 using AnonimizadorDotNet.Cryptography.Fpe;
 using AnonimizadorDotNet.Cryptography.Keys;
-using AnonimizadorDotNet.Documents.Formatting;
 using AnonimizadorDotNet.Documents.Phone;
 
 namespace AnonimizadorDotNet.Transformation.Phone;
@@ -16,9 +15,12 @@ namespace AnonimizadorDotNet.Transformation.Phone;
 /// </para>
 /// <para>Seguro para uso por várias threads ao mesmo tempo.</para>
 /// </remarks>
-internal sealed class PhoneTransformer : IDisposable
+internal sealed class PhoneTransformer : IValueTransformer, IDisposable
 {
     private readonly Ff1Pool _pool;
+
+    /// <inheritdoc/>
+    public string Type => DocumentTypeNames.Phone;
 
     /// <summary>Cria o transformador com a subchave de telefone do chaveiro.</summary>
     public PhoneTransformer(KeyRing keys)

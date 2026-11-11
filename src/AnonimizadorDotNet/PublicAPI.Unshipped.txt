@@ -1,1 +1,7 @@
 #nullable enable
+AnonimizadorDotNet.Transformation.IValueTransformer
+AnonimizadorDotNet.Transformation.IValueTransformer.TryTransform(System.ReadOnlySpan<char> value, AnonimizadorDotNet.ValueKind kind, out string? substitute) -> bool
+AnonimizadorDotNet.Transformation.IValueTransformer.Type.get -> string!
+AnonimizadorDotNet.ValueKind
+AnonimizadorDotNet.ValueKind.Number = 1 -> AnonimizadorDotNet.ValueKind
+AnonimizadorDotNet.ValueKind.Text = 0 -> AnonimizadorDotNet.ValueKind
