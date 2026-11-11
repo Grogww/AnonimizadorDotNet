@@ -121,4 +121,27 @@ recalcula os verificadores e reaplica a representação original. Nenhum `Parsed
 | `Name` | Partes (prenome, sobrenome, inicial, partícula, sufixo), caixa, acentos e sexo do prenome |
 | `Email` | Parte local, domínio e sufixo; provedores públicos preservados; estilo da parte local |
 
-A cifra e a seleção por HMAC não entram aqui: a camada `Transformation` (etapa 4) junta as duas pontas.
+A cifra e a seleção por HMAC não entram aqui: a camada `Transformation` junta as duas pontas.
+
+### `Transformation`
+
+Um transformador por tipo, na subpasta do tipo (`Cpf`, `Cnpj`, `Phone`, `Name`, `Email`): `TryParse` do
+documento → cifra ou seleção → `Format`. Todos implementam a interface pública `IValueTransformer`
+(`Type` + `TryTransform(valor, ValueKind, out substituto)`), que também serve para tipos próprios do
+consumidor. `TryTransform` devolve falso, sem lançar exceção, quando o valor não é do tipo; o que fazer
+nesse caso é decisão das camadas de cima (classificação e política).
+
+| Componente | Papel |
+|---|---|
+| `TransformerSet` | Recebe a chave mestra, cria os transformadores embutidos e registra os próprios por nome de tipo (sem diferenciar caixa). A chave mestra é zerada ao fim da construção; ficam só as subchaves |
+| `HmacContexts` | Contextos de cada sorteio por HMAC (prenome, sobrenome por posição, dígitos, domínio). Fixados por valores dourados, como os rótulos de `KeyLabels` |
+| `Phone/PhoneTweak` | Tweak do telefone: `DDD/início do assinante` em ASCII |
+| `Cryptography/Keys/KeyRing`, `SecretKey` | Guarda a chave mestra e as subchaves de HMAC em arrays fixados na memória, zerados no descarte |
+| `Cryptography/Fpe/Ff1Pool` | Instâncias de `Ff1` reutilizadas entre threads: cada operação pega uma livre (ou cria), usa e devolve |
+
+Chaves da seleção: CPF, CNPJ (só a raiz, tweak vazio) e telefone usam FF1, que é bijetor; nome usa o nome
+completo normalizado; e-mail usa a parte local inteira (sem a etiqueta) e, para o domínio corporativo, o
+domínio inteiro.
+
+Concorrência: todos os transformadores embutidos são seguros para várias threads (o FF1 via pool; o HMAC
+não tem estado). O contrato foi escolhido na etapa 4 e será revisto com o uso real (sessão, lotes).

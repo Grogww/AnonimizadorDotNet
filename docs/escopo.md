@@ -58,7 +58,8 @@ produto para usos mais amplos e para a publicação externa. O que não está na
 | 1. FF1 sobre AES (`Cryptography/Primitives`, `Cryptography/Fpe`) | Concluída: vetores oficiais do NIST, teste diferencial contra o BouncyCastle (só nos testes), bijeção exaustiva e testes de propriedade |
 | 2. Subchaves por tipo, seleção por HMAC e *cycle-walking* (`Cryptography/Keys`, `Cryptography/Selection`, `Cryptography/Fpe`) | Concluída: HKDF-SHA256 com rótulos versionados e valores dourados, seleção sem viés de módulo, *cycle-walking* com bijeção exaustiva no subconjunto permitido |
 | 3. Documentos (`Documents`, `Resources`) | Concluída: CPF, CNPJ numérico e alfanumérico, telefone, nome e e-mail, com representação original, valores proibidos e dicionários embutidos |
-| 4–9. Transformação, detecção, classificação, JSON, sessão e API pública | Não iniciadas |
+| 4. Transformação (`Transformation`, `Cryptography/Keys/KeyRing`, `Cryptography/Fpe/Ff1Pool`) | Concluída: um transformador por tipo ("valor + tipo → substituto"), interface pública `IValueTransformer`, chave mestra descartada após derivar as subchaves, pool de instâncias do FF1 entre threads, valores dourados conferidos contra o BouncyCastle |
+| 5–9. Detecção, classificação, JSON, sessão e API pública | Não iniciadas |
 
 ### Depois da v1
 
@@ -137,6 +138,10 @@ Notas:
 - No telefone, o primeiro dígito do assinante distingue fixo (2 a 5) de celular; preservá-lo mantém o
   substituto na mesma faixa sem *cycle-walking*, inclusive para celulares antigos de 8 dígitos (6 a 9).
   Os 7 dígitos restantes (10⁷) ficam acima do domínio mínimo do FF1. O DDD precisa ser um dos 67 em uso.
+- O tweak do FF1 do telefone é o DDD + o início preservado do assinante (`11/98`): DDD e início não mudam,
+  só os 7 dígitos finais são substituídos, com uma permutação própria por DDD e faixa. Assim, dois números
+  com o mesmo final em DDDs diferentes não ganham o mesmo final substituto. O código do país não entra no
+  tweak; o mesmo número escrito sem DDD, sim, gera outro final.
 - Um CPF fictício válido pode coincidir com o CPF de alguma pessoa real. Isso é inerente a gerar documentos
   válidos e deve constar na documentação.
 
@@ -147,12 +152,16 @@ sobre dicionários embutidos. Colisões aqui são toleráveis.
 
 - **Nome:** prenome + sobrenomes escolhidos do dicionário pelo HMAC, mantendo o número de partes, as
   partículas ("da", "dos"…) e sufixos ("Filho", "Júnior"…), a caixa, o uso de acentos e o sexo do prenome
-  quando ele está no dicionário.
+  quando ele está no dicionário. A chave do HMAC é o nome completo normalizado (sem acentos, em
+  maiúsculas): o mesmo nome gera sempre o mesmo substituto, mas dois nomes que só compartilham o sobrenome
+  recebem, em geral, sobrenomes substitutos diferentes — o substituto não revela parentesco.
 - **E-mail:** parte local substituída; domínio de provedor público (gmail.com, outlook.com…) preservado;
   domínio corporativo substituído deterministicamente por um nome fictício, mantendo o sufixo (`com.br`,
   `gov.br`…). A parte local substituta segue o estilo da original (separador e dígitos no fim) e a
   etiqueta depois do `+` é descartada: endereços que só diferem por ela (`joao+promo@…` e `joao@…`)
-  recebem o mesmo substituto. Um domínio fictício pode coincidir com um real, como no CPF.
+  recebem o mesmo substituto. O domínio corporativo é sorteado pelo domínio inteiro, então todos os
+  endereços de uma empresa ficam com o mesmo domínio fictício. Um domínio fictício pode coincidir com um
+  real, como no CPF.
 - **Dicionários:** seleção própria do projeto, guiada pelas frequências de nomes do IBGE (ver `NOTICE`);
   nenhum arquivo de terceiros é copiado. A ordem dos itens faz parte do contrato: itens novos vão no fim.
 
