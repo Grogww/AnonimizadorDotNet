@@ -25,7 +25,7 @@ internal static class KeyLabels
     /// <summary>FF1 sobre a raiz alfanumérica (8 posições em base 36) do CNPJ.</summary>
     public static ReadOnlySpan<byte> Ff1CnpjAlphanumeric => "AnonimizadorDotNet/v1/ff1/cnpj-alfanumerico"u8;
 
-    /// <summary>FF1 sobre os 8 dígitos finais do telefone.</summary>
+    /// <summary>FF1 sobre os 7 dígitos finais do telefone.</summary>
     public static ReadOnlySpan<byte> Ff1Phone => "AnonimizadorDotNet/v1/ff1/telefone"u8;
 
     /// <summary>Seleção por HMAC das partes do nome.</summary>
