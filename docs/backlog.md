@@ -37,6 +37,19 @@ Na v1 só são documentadas.
   mesmo substituto, o que derruba o `UPDATE`. Possível tratativa: sufixo derivado por FF1 na parte local.
   Muda todos os substitutos de e-mail, então só com decisão (e, se for depois da 1.0, nova versão).
 
+### Uso do reader (a confirmar com o uso real)
+
+Notas da etapa 6; viram trabalho só se o script ou o MCP pedirem.
+
+- Sobrecarga para `IDataReader` puro (hoje só `DbDataReader`).
+- Coluna bloqueada como `NULL` quebra `DataTable.Load` e `UPDATE` em coluna `NOT NULL`: avaliar marcar
+  `AllowDBNull` no esquema ou um valor de bloqueio configurável.
+- Regra explícita "CPF ou CNPJ" (hoje só a heurística tenta os dois tipos).
+- Explicar a classificação de um resultado (só metadados), para entender por que uma coluna passou.
+- Cache de substitutos entre linhas: ganharia CPU, mas guardaria originais em memória; só com medição.
+- Conveniências do builder: chave em Base64 direto, `leaveOpen` no `Wrap`, integração com injeção de
+  dependência (pacote à parte).
+
 ### Classificação e operação
 
 - Amostragem de conteúdo na classificação (ex.: maioria das amostras é CPF com DV válido).
