@@ -70,7 +70,8 @@ produto para usos mais amplos e para a publicação externa. O que não está na
 | 2. Subchaves por tipo, seleção por HMAC e *cycle-walking* (`Cryptography/Keys`, `Cryptography/Selection`, `Cryptography/Fpe`) | Concluída: HKDF-SHA256 com rótulos versionados e valores dourados, seleção sem viés de módulo, *cycle-walking* com bijeção exaustiva no subconjunto permitido |
 | 3. Documentos (`Documents`, `Resources`) | Concluída: CPF, CNPJ numérico e alfanumérico, telefone, nome e e-mail, com representação original, valores proibidos e dicionários embutidos |
 | 4. Transformação (`Transformation`, `Cryptography/Keys/KeyRing`, `Cryptography/Fpe/Ff1Pool`) | Concluída: um transformador por tipo ("valor + tipo → substituto"), interface pública `IValueTransformer`, chave mestra descartada após derivar as subchaves, pool de instâncias do FF1 entre threads, valores dourados conferidos contra o BouncyCastle |
-| 5–8. Classificação por coluna, `IDataReader` + API mínima, detecção em texto livre, documentação e `0.x` | Não iniciadas |
+| 5. Classificação por coluna (`Classification`) | Concluída: regras explícitas por `schema.tabela.coluna`, proteção de chaves internas, heurística por nome, varredura de texto e política, decididas uma vez por resultado a partir do esquema |
+| 6–8. `IDataReader` + API mínima, detecção em texto livre, documentação e `0.x` | Não iniciadas |
 
 ### Depois da v1
 
@@ -89,6 +90,8 @@ produto para usos mais amplos e para a publicação externa. O que não está na
 | Nomes em texto livre (NER) | v2 |
 | Distribuição | Repositório público no GitHub desde o início; NuGet público após as fases de teste. Cuidados de pacote público desde o início |
 | Licença | Apache 2.0 (inclui concessão de patentes dos contribuidores) |
+| Política para colunas não classificadas | `Passar` por padrão, com varredura das colunas de texto; `Bloquear` bloqueia também o texto não classificado |
+| Coluna `cpf_cnpj`/`documento` | Tenta CPF e depois CNPJ; o tamanho do valor desambigua |
 | Idioma | Híbrido: API (tipos, métodos, namespaces) em inglês; termos brasileiros sem tradução (`Cpf`, `Cnpj`, `Cep`); documentação XML, README, mensagens de erro e docs do projeto em português |
 
 ## Princípios
@@ -211,15 +214,28 @@ dados originais ──► Sessao.Anonimizar ──► dados seguros ──► LL
   texto, CPF, CNPJ, telefone e e-mail são encontrados pelos detectores de padrão (tolerando mudança de
   máscara) e nomes por correspondência exata com os nomes emitidos.
 
-## Classificação de campos
+## Classificação de colunas
 
-Para cada campo, a primeira regra que se aplicar vence:
+Decidida uma vez por resultado, só a partir do esquema. Para cada coluna, a primeira regra que se aplicar
+vence:
 
-1. **Configuração explícita:** `caminho → tipo + estratégia` ou `caminho → ignorar`.
-2. **Heurística por nome de campo:** `cpf`, `nr_cpf`, `cnpj`, `email`, `telefone`, `celular`, `nome`, …
-3. **Texto livre não classificado:** varredura com detectores por padrão (CPF, CNPJ, e-mail, telefone)
-   dentro do texto, como em campos `observacao`.
-4. **Política padrão para o restante:** `Passar` ou `Bloquear` (recomendado para o caso MCP).
+1. **Configuração explícita:** `schema.tabela.coluna`, `tabela.coluna` ou `coluna` → tipo, `ignorar` ou
+   `varrer`; a mais específica vence.
+2. **Chaves internas:** identity/autoincremento, GUID e nomes de ID (`id_usuario`, `IdTelefone`,
+   `cliente_id`) passam intactos. Ser chave primária não basta: um CPF pode ser chave natural.
+3. **Heurística por nome de coluna:** `cpf`, `nr_cpf`, `cnpj`, `cpf_cnpj`, `documento`, `email`,
+   `telefone`, `celular`, `nome`, `nome_da_mae`, …; atributos do dado (`tipo_telefone`, `email_status`) e
+   nomes que não são de pessoa (`nome_produto`, `razao_social`) ficam de fora.
+4. **Texto livre não classificado:** varredura com detectores por padrão (CPF, CNPJ, e-mail, telefone)
+   dentro do texto, como em colunas `observacao`.
+5. **Política para o restante:** `Passar` (padrão) ou `Bloquear`.
+
+A origem informada pelo provedor (`BaseTableName`/`BaseColumnName`) vale mais que o alias. Pelo alias, só
+uma regra de transformação se aplica: um alias escrito na consulta nunca desliga a anonimização.
+
+Com `Bloquear`, nada que não tenha sido classificado como seguro sai: só passam as chaves internas e as
+colunas ignoradas por configuração, e o texto não classificado é bloqueado em vez de varrido (a varredura
+não pega nomes; NER é v2).
 
 Detectores e transformadores são **extensíveis**: o consumidor registra tipos próprios.
 
@@ -236,4 +252,3 @@ Detectores e transformadores são **extensíveis**: o consumidor registra tipos 
 ## Decisões em aberto
 
 - **Nome do pacote NuGet:** preferência por manter `AnonimizadorDotNet`; verificar disponibilidade.
-- **Política padrão para campos não classificados:** `Passar` ou `Bloquear`.

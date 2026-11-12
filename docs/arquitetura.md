@@ -145,3 +145,28 @@ domínio inteiro.
 
 Concorrência: todos os transformadores embutidos são seguros para várias threads (o FF1 via pool; o HMAC
 não tem estado). O contrato foi escolhido na etapa 4 e será revisto com o uso real (sessão, lotes).
+
+### `Classification`
+
+Decide, só a partir do esquema e uma vez por resultado, o que fazer com cada coluna: transformar, varrer,
+passar ou bloquear. Nenhum valor de linha é lido aqui; aplicar a decisão é papel do reader.
+
+| Componente | Papel |
+|---|---|
+| `Columns/ColumnInfo` | Metadados de uma coluna (nome no resultado, origem, tipo CLR, identity, tamanho); nunca valores |
+| `Columns/ColumnStorage` | Texto, inteiro (`ValueKind.Number`) ou outro, a partir do tipo CLR |
+| `Columns/ColumnNameTokens` | Quebra nomes em partes: `snake_case`, `camelCase`, siglas, dígitos, sem acentos |
+| `Rules/ColumnTarget`, `ColumnRule`, `ColumnRuleSet` | Regras explícitas por `schema.tabela.coluna`, `tabela.coluna` ou `coluna`; a mais específica vence |
+| `Rules/InternalKeyGuard` | Identity, GUID e nomes de ID nunca são classificados pela heurística |
+| `Rules/ColumnNameHeuristic` | Tipo pelo nome da coluna, exigindo armazenamento compatível |
+| `ColumnClassifier` | Aplica a precedência e devolve um `ColumnDecision` por posição |
+
+Precedência: regra explícita → chave interna → nome (origem, depois alias) → varredura de texto → política
+(`Pass`/`Block`, interna; vira `UnclassifiedPolicy` na API pública).
+
+Origem e alias: a origem informada pelo provedor identifica a coluna, para resistir a aliases. O alias só
+pode acrescentar proteção (uma regra de transformação ou a heurística), nunca retirá-la: `Ignorar` e
+`Varrer` por alias não se aplicam quando há origem, e a proteção de chaves olha a origem, para que
+`telefone AS id` continue anonimizado.
+
+Uma decisão não guarda valores nem nomes de coluna, e o classificador pode ser usado por várias threads.
