@@ -15,10 +15,14 @@ Itens fora do escopo da v1. Cada item deve virar uma issue quando o repositório
 
 ### Entrada e processamento
 
+- **JSON** (`System.Text.Json`, em memória): percorrer `JsonNode`/`JsonDocument` montando o caminho de cada
+  campo, aplicar a mesma classificação da v1 por caminho e manter o tipo JSON (string continua string,
+  número continua número). Saiu da v1 quando o foco passou para `IDataReader`.
 - CSV.
-- `IDataReader` e abstração de linha/coluna (caso SQL direto, sem passar por JSON).
 - Streaming: `Stream`, `Utf8JsonReader` e `IAsyncEnumerable<T>`, sem carregar tudo em memória;
   paralelismo configurável.
+- Escrita assistida no banco (gerar os `UPDATE`s, ordem por constraints, CPF como chave primária): por
+  enquanto fica no script do consumidor.
 
 ### Classificação e operação
 
@@ -31,6 +35,11 @@ Itens fora do escopo da v1. Cada item deve virar uma issue quando o repositório
 
 ### Restauração
 
+- **Sessão com restauração** (saiu da v1: nem o MCP somente leitura nem o script de banco precisam dela).
+  Registro `substituto → original` em memória, por tipo; restaurar valor individual, JSON e texto livre
+  (detectores tolerando mudança de máscara; nomes por correspondência exata com os emitidos); só restaurar
+  o que a sessão emitiu; contrato de concorrência definido e testado; testes de anonimizar → restaurar =
+  identidade e de que um CPF válido inventado não é restaurado.
 - Persistência cifrada do registro da sessão (restaurar em outro processo ou mais tarde).
 
 ## v2
@@ -56,7 +65,9 @@ Itens fora do escopo da v1. Cada item deve virar uma issue quando o repositório
 - Mapeamento de objetos C# por atributos (`[Sensivel(Tipo.Cpf)]`) e configuração fluente.
 - XML, Parquet, `DataTable`.
 - Integração com EF Core.
-- **Pacote proxy MCP:** servidor MCP que envolve um MCP SQL somente leitura e anonimiza os resultados.
+- **Pacote MCP:** servidor MCP que abre a conexão, só permite leitura e entrega as linhas anonimizadas
+  pelo `AnonymizingDataReader` da v1. Começa como projeto próprio do usuário, consumindo o pacote; vira
+  `AnonimizadorDotNet.Mcp` se fizer sentido publicar.
 
 ## Privacidade
 

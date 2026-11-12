@@ -21,15 +21,24 @@ Consultar a estrutura e amostras de dados de um serviço por meio de um **MCP SQ
 que nenhum dado pessoal chegue ao LLM:
 
 ```
-LLM  ⇄  MCP (proxy)  ⇄  AnonimizadorDotNet  ⇄  MCP SQL ReadOnly  ⇄  Banco
+LLM  ⇄  MCP SQL ReadOnly  ──(IDataReader)──►  AnonymizingDataReader  ──►  linhas anonimizadas
+              │
+            Banco
 ```
 
+- O MCP abre a conexão e só permite leitura; a biblioteca não faz chamada de rede, só envolve o reader.
 - Metadados (tabelas, colunas, tipos, chaves) passam sem alteração.
 - Linhas retornadas são anonimizadas coluna a coluna antes de sair do ambiente local.
 - Se a tabela `Clientes` e a tabela `Pedidos` trazem o mesmo CPF, ambas trazem o **mesmo CPF fictício**,
   e o LLM consegue relacionar os registros corretamente.
+- O LLM não filtra por valores fictícios (`WHERE cpf = '<fictício>'`); navega pelos IDs internos, que
+  passam intactos.
 
-A biblioteca é o núcleo; o proxy MCP é um consumidor (pacote separado — ver backlog).
+Segundo uso-alvo da v1: um **script que anonimiza um banco de teste**, lendo cada tabela pelo
+`AnonymizingDataReader` e gravando os substitutos com `UPDATE`. Como os substitutos são determinísticos e
+o FF1 é bijetor, as junções por CPF/CNPJ continuam funcionando no banco gravado.
+
+A biblioteca é o núcleo; o MCP e o script são consumidores (o MCP pode virar pacote separado — ver backlog).
 
 ## Fases
 
@@ -43,9 +52,11 @@ produto para usos mais amplos e para a publicação externa. O que não está na
 |---|---|
 | Tipos | CPF, CNPJ (numérico e alfanumérico), telefone, e-mail, nome (em coluna) |
 | Transformação | FF1 para CPF/CNPJ/telefone; HMAC + dicionário para nome e e-mail |
-| Modos | **Direto** (só anonimiza, nada é guardado) e **com restauração** (sessão) |
-| Entrada | Valor individual e JSON (`System.Text.Json`, em memória) |
-| Classificação | Configuração explícita + heurística por nome de campo + varredura de texto livre por padrão (CPF, CNPJ, e-mail, telefone) |
+| Modos | **Direto** (só anonimiza, nada é guardado); a sessão com restauração foi para a v1.x |
+| Entrada | Valor individual e `IDataReader` (`AnonymizingDataReader`, que envolve o reader original); JSON foi para a v1.x |
+| Classificação | Por coluna, uma vez por resultado: configuração explícita + heurística por nome de coluna + varredura de texto livre por padrão (CPF, CNPJ, e-mail, telefone) |
+| Usos-alvo | MCP SQL somente leitura e script que anonimiza um banco de teste via `UPDATE` |
+| Distribuição | `0.x` prerelease no NuGet assim que o reader funcionar; 1.0 depois do uso real |
 | Política para campos não classificados | `Passar` ou `Bloquear` |
 | Chave secreta | Valor direto ou variável de ambiente |
 | Qualidade | Cuidados de pacote público desde o início (ver seção própria) |
@@ -59,13 +70,13 @@ produto para usos mais amplos e para a publicação externa. O que não está na
 | 2. Subchaves por tipo, seleção por HMAC e *cycle-walking* (`Cryptography/Keys`, `Cryptography/Selection`, `Cryptography/Fpe`) | Concluída: HKDF-SHA256 com rótulos versionados e valores dourados, seleção sem viés de módulo, *cycle-walking* com bijeção exaustiva no subconjunto permitido |
 | 3. Documentos (`Documents`, `Resources`) | Concluída: CPF, CNPJ numérico e alfanumérico, telefone, nome e e-mail, com representação original, valores proibidos e dicionários embutidos |
 | 4. Transformação (`Transformation`, `Cryptography/Keys/KeyRing`, `Cryptography/Fpe/Ff1Pool`) | Concluída: um transformador por tipo ("valor + tipo → substituto"), interface pública `IValueTransformer`, chave mestra descartada após derivar as subchaves, pool de instâncias do FF1 entre threads, valores dourados conferidos contra o BouncyCastle |
-| 5–9. Detecção, classificação, JSON, sessão e API pública | Não iniciadas |
+| 5–8. Classificação por coluna, `IDataReader` + API mínima, detecção em texto livre, documentação e `0.x` | Não iniciadas |
 
 ### Depois da v1
 
-- **v1.x:** CEP, data de nascimento, cartão, endereço, identificador genérico; CSV e `IDataReader`;
-  streaming; amostragem de conteúdo na classificação; relatório de auditoria; outros provedores de chave;
-  persistência cifrada da sessão de restauração.
+- **v1.x:** JSON; sessão com restauração e sua persistência cifrada; CEP, data de nascimento, cartão,
+  endereço, identificador genérico; CSV; streaming; amostragem de conteúdo na classificação; relatório de
+  auditoria; outros provedores de chave.
 - **v2:** nomes em texto livre (NER), placeholders semânticos para LLM, coerência entre campos.
 
 ## Decisões tomadas
@@ -73,8 +84,8 @@ produto para usos mais amplos e para a publicação externa. O que não está na
 | Tema | Decisão |
 |---|---|
 | Plataforma | .NET 8+ (suporte a .NET Standard 2.0 vai para o backlog) |
-| Foco da v1 | Anonimizador simples, determinístico, para dados estruturados |
-| Restauração | Na v1, para dados estruturados e valores com formato reconhecível |
+| Foco da v1 | Anonimizador simples, determinístico, para linhas de banco (`IDataReader`), voltado ao MCP somente leitura e ao script de banco de teste |
+| Restauração | v1.x (nenhum dos usos-alvo da v1 precisa dela) |
 | Nomes em texto livre (NER) | v2 |
 | Distribuição | Repositório público no GitHub desde o início; NuGet público após as fases de teste. Cuidados de pacote público desde o início |
 | Licença | Apache 2.0 (inclui concessão de patentes dos contribuidores) |
@@ -178,7 +189,7 @@ sobre dicionários embutidos. Colisões aqui são toleráveis.
 
 Anonimiza e não guarda nada. É o modo para gerar bases, alimentar o proxy MCP ou processar em massa.
 
-### Com restauração (sessão)
+### Com restauração (sessão) — v1.x
 
 Para o fluxo **anonimizar → LLM → restaurar**:
 
