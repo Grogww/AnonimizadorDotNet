@@ -72,7 +72,8 @@ produto para usos mais amplos e para a publicação externa. O que não está na
 | 4. Transformação (`Transformation`, `Cryptography/Keys/KeyRing`, `Cryptography/Fpe/Ff1Pool`) | Concluída: um transformador por tipo ("valor + tipo → substituto"), interface pública `IValueTransformer`, chave mestra descartada após derivar as subchaves, pool de instâncias do FF1 entre threads, valores dourados conferidos contra o BouncyCastle |
 | 5. Classificação por coluna (`Classification`) | Concluída: regras explícitas por `schema.tabela.coluna`, proteção de chaves internas, heurística por nome, varredura de texto e política, decididas uma vez por resultado a partir do esquema |
 | 6. `IDataReader` e API mínima (`Data`, raiz) | Concluída: `AnonymizingDataReader` fechado por padrão (todos os membros de leitura sobrescritos, verificado por reflexão), tipo CLR e metadados preservados, `AnonymizerBuilder` de uso único, chave direta ou por variável de ambiente (Base64) |
-| 7–8. Detecção em texto livre, documentação e `0.x` | Não iniciadas; nada é publicado no NuGet antes do fim da etapa 7 (o uso local, por referência de projeto ou pacote local, é livre) |
+| 7. Detecção em texto livre (`Detection`) | Concluída: CPF, CNPJ numérico e alfanumérico, e-mail e telefone com DDD encontrados no texto e trocados pelo mesmo substituto da coluna; `Anonymizer.AnonymizeText` e detectores próprios (`ITextDetector`); varredura linear medida até 1 MB |
+| 8. Documentação e `0.x` | Não iniciada; a publicação no NuGet vem ao fim dela (o uso local, por referência de projeto ou pacote local, já é livre) |
 
 ### Depois da v1
 
@@ -100,6 +101,13 @@ produto para usos mais amplos e para a publicação externa. O que não está na
 | Builder | Uso único e descartável; para outro anonimizador, outro builder com a mesma chave |
 | E-mail em coluna `UNIQUE` | Só documentado na v1 (colisões possíveis); tratativa no backlog |
 | Substituto maior que a coluna | O `UPDATE` falha normalmente; ponto de correção no backlog |
+| Detector e transformador no texto livre | O detector só aponta o trecho; o transformador do mesmo tipo gera o substituto e valida. Trecho recusado fica como está |
+| Sobreposição no texto | Vence o que começa antes; empate, o mais longo; empate, CNPJ → CPF → e-mail → telefone → próprios |
+| Telefone no texto | DDD obrigatório (10 ou 11 dígitos, `+55`/`55` opcional); sem separador, só o celular de 11 dígitos; assinante sem DDD e prefixo `0` não são detectados |
+| Limites de palavra no texto | Sem dígito colado nem separador seguido de dígito; letra antes de número aceita; CNPJ alfanumérico sem letra nem dígito colado. A rever com textos maiores e mais complexos |
+| CNPJ alfanumérico sem máscara no texto | Aceito; cerca de 1 em 100 códigos de 14 posições com essa forma passa no cálculo e é trocado (documentado) |
+| Detector próprio de tipo embutido | Soma-se ao embutido; não há como desligar um embutido na v1 |
+| Tamanho do texto | Sem limite nem *timeout*: padrões lineares, medidos até 1 MB |
 | Idioma | Híbrido: API (tipos, métodos, namespaces) em inglês; termos brasileiros sem tradução (`Cpf`, `Cnpj`, `Cep`); documentação XML, README, mensagens de erro e docs do projeto em português |
 
 ## Princípios
@@ -235,7 +243,8 @@ vence:
    `telefone`, `celular`, `nome`, `nome_da_mae`, …; atributos do dado (`tipo_telefone`, `email_status`) e
    nomes que não são de pessoa (`nome_produto`, `razao_social`) ficam de fora.
 4. **Texto livre não classificado:** varredura com detectores por padrão (CPF, CNPJ, e-mail, telefone)
-   dentro do texto, como em colunas `observacao`.
+   dentro do texto, como em colunas `observacao`. Nomes e endereços no meio do texto **não** são
+   encontrados (NER é v2): para colunas de texto sensíveis, a política `Bloquear` ou regras explícitas.
 5. **Política para o restante:** `Passar` (padrão) ou `Bloquear`.
 
 A origem informada pelo provedor (`BaseTableName`/`BaseColumnName`) vale mais que o alias. Pelo alias, só

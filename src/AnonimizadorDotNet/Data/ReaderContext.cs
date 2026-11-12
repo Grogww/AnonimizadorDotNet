@@ -1,4 +1,5 @@
 using AnonimizadorDotNet.Classification;
+using AnonimizadorDotNet.Detection;
 
 namespace AnonimizadorDotNet.Data;
 

@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.Data;
 using System.Data.Common;
 using AnonimizadorDotNet.Classification;
+using AnonimizadorDotNet.Detection;
 using AnonimizadorDotNet.Transformation;
 
 namespace AnonimizadorDotNet.Data;

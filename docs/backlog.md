@@ -50,6 +50,14 @@ Notas da etapa 6; viram trabalho só se o script ou o MCP pedirem.
 - Conveniências do builder: chave em Base64 direto, `leaveOpen` no `Wrap`, integração com injeção de
   dependência (pacote à parte).
 
+### Texto livre (notas da etapa 7)
+
+- Desligar um detector embutido (hoje um detector próprio só soma aos embutidos).
+- Varrer o valor recusado numa coluna classificada (`"CPF: 123.456.789-09"` na coluna `cpf` passa como está).
+- E-mail seguido de um rótulo inválido (`joao@empresa.com.123`) não é detectado; avaliar recortar o domínio.
+- Contagem de trechos trocados por coluna (sem valores), perto do relatório de auditoria.
+- Rever os limites de palavra com textos reais maiores (ex.: `CNPJ-12ABC34501DE35`, colado em hífen, hoje não é detectado).
+
 ### Classificação e operação
 
 - Amostragem de conteúdo na classificação (ex.: maioria das amostras é CPF com DV válido).

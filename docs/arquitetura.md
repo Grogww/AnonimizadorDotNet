@@ -88,12 +88,12 @@ camadas de baixo não conhecem as de cima.
 
 | Área | Responsabilidade | Visibilidade |
 |---|---|---|
-| Raiz | `AnonymizerBuilder`, `Anonymizer` (valor individual e reader), `UnclassifiedPolicy`, `PersonalDataTypes`; sessão na v1.x | **Pública** |
+| Raiz | `AnonymizerBuilder`, `Anonymizer` (valor individual, texto livre e reader), `UnclassifiedPolicy`, `PersonalDataTypes`; sessão na v1.x | **Pública** |
 | `Data` | Envolve o `DbDataReader`, aplica a decisão de cada coluna aos valores | `internal` |
 | `Json` (v1.x) | Percorre o documento, aplica a classificação por caminho e monta a saída | `internal` |
 | `Sessions` (v1.x) | Registro `substituto → original` e restauração | Sessão pública, registro interno |
 | `Classification` | Regras em ordem de precedência (explícita → nome → texto livre → política) | Configuração pública, motor interno |
-| `Detection` | Detectores por padrão para varredura de texto livre | `internal` + interface pública de extensão |
+| `Detection` | Detectores por padrão e varredura de texto livre (`TextScanner`) | `internal` + interface pública de extensão (`ITextDetector`, `TextMatch`) |
 | `Transformation` | Liga documento e criptografia: gera o substituto de um valor | `internal` + interface pública de extensão |
 | `Documents` | Por tipo (CPF, CNPJ, telefone, e-mail, nome): normalizar, validar, calcular DV, reaplicar formato | `internal` |
 | `Cryptography` | FF1 sobre AES, seleção por HMAC, derivação de subchaves | `internal` |
@@ -182,16 +182,40 @@ teste de reflexão falha se o .NET acrescentar um novo.
 |---|---|
 | `ColumnSchema` | `GetColumnSchema()` → `ColumnInfo[]`; sem esquema do provedor, só nome e tipo CLR (a classificação ainda vale pelo nome) |
 | `ValueCodec` | Valor CLR ↔ texto para os transformadores: texto como `ValueKind.Text`, inteiros e `decimal` sem casas como `ValueKind.Number`; volta pelo tipo original, com verificação de faixa |
-| `ITextScanner` | Varredura de texto livre; até a etapa 7, `PassThroughScanner` devolve o texto intacto |
 | `ReaderContext` | Classificador e varredura compartilhados pelos readers de um anonimizador; encerrado no descarte dele |
 | `AnonymizingDataReader` | Classifica a cada resultado e calcula cada valor uma vez por linha |
 
 Por ação: `Pass` vai direto ao reader original (inclusive os getters tipados); `Block` devolve `DBNull` sem
 ler o original; `Transform` usa o primeiro transformador que aceitar o valor; `Scan` passa pelo
-`ITextScanner`. Metadados e tipos CLR passam intactos. Um valor que nenhum transformador aceita passa como
+`TextScanner` (ver `Detection`). Metadados e tipos CLR passam intactos. Um valor que nenhum transformador aceita passa como
 está (decisão provisória); um valor aceito cujo substituto não cabe no tipo da coluna (um CPF válido numa
 coluna `int`) sai como `DBNull`, para que um documento válido nunca saia intacto. As duas regras ficam num
 único ponto: `AnonymizingDataReader.Transform`.
+
+### `Detection`
+
+Varredura das colunas `Scan` e de `Anonymizer.AnonymizeText`. **Detectar é achar o trecho; substituir é do
+transformador**: o detector devolve só posições (`TextMatch`) e o `IValueTransformer` do mesmo tipo gera o
+substituto com `ValueKind.Text`. Assim o CPF de uma `observacao` vira o mesmo CPF fictício da coluna `cpf`,
+no formato do trecho.
+
+| Componente | Papel |
+|---|---|
+| `Patterns/DocumentPatterns` | `[GeneratedRegex]` de CPF, CNPJ numérico, CNPJ alfanumérico e telefone, com os limites de palavra em *lookarounds* de tamanho fixo |
+| `Detectors/PatternDetector` | Base dos embutidos: padrão de forma + `XxxFormat.TryParse` do tipo (só devolve trechos válidos) |
+| `Detectors/CpfDetector`, `CnpjDetector` | Com e sem máscara; verificadores conferidos; alfanumérico exige uma letra e não aceita letra ou dígito colado |
+| `Detectors/EmailDetector` | Sem regex: parte de cada `@` e se expande para os dois lados (linear em textos longos sem `@`) |
+| `Detectors/PhoneDetector` | DDD obrigatório, `+55`/`55` opcional; sem separador, só o celular de 11 dígitos |
+| `ITextScanner`, `TextScanner` | Junta os candidatos de todos os detectores, resolve a sobreposição e monta o texto |
+
+Limites de palavra: um número não pode ter dígito colado nem um separador (`. / -`) seguido de dígito antes
+ou depois; letra colada antes de número é aceita (`CPF12345678909`). Sobreposição: vence o trecho que começa
+antes; no empate, o mais longo; no empate, CNPJ → CPF → e-mail → telefone → detectores próprios (na ordem de
+registro). Um trecho que o transformador recusa fica como está e libera a posição. Texto sem dígito nem `@`
+não passa pelos embutidos, e sem nenhuma troca a mesma instância volta.
+
+Custo medido (`ScanBenchmarks`, *job short*): ~26 ns para 1 KB sem dígito, ~16 µs para 1 KB de números que
+não são documento, ~72 µs para 1 KB com nove documentos; 64 KB em ~4 ms e 1 MB em ~67 ms (linear).
 
 ### API pública (raiz)
 
@@ -203,9 +227,11 @@ using var anonymizer = new AnonymizerBuilder()
     .ScanColumn("Pedidos.comentario")
     .WithUnclassifiedPolicy(UnclassifiedPolicy.Pass)
     .AddTransformer(meuTransformador)                  // IValueTransformer próprio
+    .AddDetector(meuDetector)                          // ITextDetector próprio, somado aos embutidos
     .Build();
 
 anonymizer.TryAnonymize("123.456.789-09", PersonalDataTypes.Cpf, out string? cpf);
+string texto = anonymizer.AnonymizeText("CPF 123.456.789-09, e-mail maria@gmail.com");
 using DbDataReader reader = anonymizer.Wrap(command.ExecuteReader());
 ```
 
@@ -214,6 +240,8 @@ using DbDataReader reader = anonymizer.Wrap(command.ExecuteReader());
 | `AnonymizerBuilder` | Uso único: `Build` zera a cópia da chave (em memória fixada) e encerra o builder, mesmo se falhar. Erros de coluna e de tipo próprio aparecem na hora (`ArgumentException`); os que dependem do conjunto (chave, tipo pedido por regra) no `Build` (`InvalidOperationException`) |
 | `Anonymizer` | Seguro para várias threads; `Dispose` zera as subchaves e faz os readers criados por ele lançarem `ObjectDisposedException` |
 | `Wrap` | Devolve um `DbDataReader` (o tipo concreto é interno) dono do reader original |
+| `AnonymizeText` | A mesma varredura das colunas `Scan`; sem troca, devolve a mesma instância |
+| `ITextDetector`, `TextMatch` | Detector próprio devolve só posições; o tipo precisa ter transformador (conferido no `Build`); trecho fora do texto ⇒ `InvalidOperationException` |
 | `UnclassifiedPolicy` | `Pass` (padrão) ou `Block`, mapeada para o `UnclassifiedBehavior` interno |
 | `PersonalDataTypes` | Nomes dos tipos embutidos: `cpf`, `cnpj`, `phone`, `email`, `name` |
 
