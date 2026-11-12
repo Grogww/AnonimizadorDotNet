@@ -3,11 +3,12 @@ using AnonimizadorDotNet.Classification;
 using AnonimizadorDotNet.Classification.Rules;
 using AnonimizadorDotNet.Cryptography.Keys;
 using AnonimizadorDotNet.Data;
+using AnonimizadorDotNet.Detection;
 using AnonimizadorDotNet.Transformation;
 
 namespace AnonimizadorDotNet;
 
-/// <summary>Configura e cria um <see cref="Anonymizer"/>: chave secreta, regras por coluna, política e tipos próprios.</summary>
+/// <summary>Configura e cria um <see cref="Anonymizer"/>: chave secreta, regras por coluna, política, tipos e detectores próprios.</summary>
 /// <remarks>
 /// <para>
 /// O builder é de uso único: <see cref="Build"/> zera a cópia da chave e, depois dele, qualquer método lança
@@ -40,6 +41,7 @@ public sealed class AnonymizerBuilder
     private readonly List<ColumnRule> _rules = [];
     private readonly HashSet<string> _targets = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<IValueTransformer> _extensions = [];
+    private readonly List<ITextDetector> _detectors = [];
     private readonly HashSet<string> _types = new(BuiltInTypes, StringComparer.OrdinalIgnoreCase);
     private byte[]? _key;
     private string? _keyVariable;
@@ -156,11 +158,38 @@ public sealed class AnonymizerBuilder
         return this;
     }
 
+    /// <summary>Registra um detector para a varredura de texto livre, somado aos embutidos (CPF, CNPJ, e-mail, telefone).</summary>
+    /// <param name="detector">
+    /// O detector; o tipo dele precisa ter transformador (embutido ou registrado por <see cref="AddTransformer"/>),
+    /// que gera o substituto e valida cada trecho. O anonimizador não o descarta.
+    /// </param>
+    /// <returns>Este builder.</returns>
+    /// <remarks>Os detectores embutidos não podem ser desligados: um detector próprio só acrescenta trechos.</remarks>
+    /// <exception cref="ArgumentException">Nome de tipo vazio, ou o mesmo detector registrado duas vezes.</exception>
+    /// <exception cref="InvalidOperationException"><see cref="Build"/> já foi chamado.</exception>
+    public AnonymizerBuilder AddDetector(ITextDetector detector)
+    {
+        ThrowIfBuilt();
+        ArgumentNullException.ThrowIfNull(detector);
+        if (string.IsNullOrWhiteSpace(detector.Type))
+        {
+            throw new ArgumentException("Todo detector precisa de um nome de tipo.", nameof(detector));
+        }
+
+        if (_detectors.Exists(registered => ReferenceEquals(registered, detector)))
+        {
+            throw new ArgumentException("Este detector já foi registrado.", nameof(detector));
+        }
+
+        _detectors.Add(detector);
+        return this;
+    }
+
     /// <summary>Cria o anonimizador e zera a cópia da chave guardada pelo builder.</summary>
     /// <returns>O anonimizador, que deve ser descartado ao fim do uso.</returns>
     /// <exception cref="InvalidOperationException">
     /// <see cref="Build"/> já foi chamado; nenhuma chave informada; variável de ambiente ausente, fora de
-    /// Base64 ou com menos de 32 bytes; ou uma regra pede um tipo sem transformador.
+    /// Base64 ou com menos de 32 bytes; ou uma regra ou um detector pede um tipo sem transformador.
     /// </exception>
     public Anonymizer Build()
     {
@@ -173,7 +202,8 @@ public sealed class AnonymizerBuilder
             try
             {
                 var classifier = new ColumnClassifier(transformers, new ColumnRuleSet(_rules), ToBehavior(_policy));
-                return new Anonymizer(transformers, new ReaderContext(classifier, PassThroughScanner.Instance));
+                var scanner = new TextScanner(transformers, _detectors);
+                return new Anonymizer(transformers, new ReaderContext(classifier, scanner));
             }
             catch
             {
@@ -215,6 +245,14 @@ public sealed class AnonymizerBuilder
 
     private void ValidateRuleTypes()
     {
+        foreach (ITextDetector detector in _detectors)
+        {
+            if (!_types.Contains(detector.Type))
+            {
+                throw new InvalidOperationException($"Não há transformador para o tipo '{detector.Type}' de um detector registrado.");
+            }
+        }
+
         foreach (ColumnRule rule in _rules)
         {
             if (rule.Kind == ColumnRuleKind.Transform && !_types.Contains(rule.Type!))

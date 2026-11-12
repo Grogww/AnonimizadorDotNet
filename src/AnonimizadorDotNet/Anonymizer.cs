@@ -69,6 +69,31 @@ public sealed class Anonymizer : IDisposable
         return transformer.TryTransform(value, kind, out substitute);
     }
 
+    /// <summary>Substitui os dados pessoais encontrados num texto livre.</summary>
+    /// <remarks>
+    /// <para>
+    /// Encontra CPF e CNPJ (numérico e alfanumérico) com verificadores válidos, e-mail e telefone com DDD,
+    /// além dos tipos dos detectores próprios (<see cref="AnonymizerBuilder.AddDetector"/>). Cada trecho vira o
+    /// mesmo substituto que teria numa coluna do tipo, no formato do trecho; o resto do texto fica intacto.
+    /// É a mesma varredura das colunas de texto não classificadas de <see cref="Wrap"/>.
+    /// </para>
+    /// <para>
+    /// Nomes de pessoas e endereços no meio do texto não são encontrados. Um número com a forma de um
+    /// documento e verificadores corretos é trocado mesmo que não seja documento (por exemplo, um código de
+    /// 14 posições que por acaso passa no cálculo do CNPJ).
+    /// </para>
+    /// </remarks>
+    /// <param name="text">O texto livre.</param>
+    /// <returns>O texto com os trechos substituídos; o próprio <paramref name="text"/>, se não houver nenhum.</returns>
+    /// <exception cref="ObjectDisposedException">O anonimizador já foi descartado.</exception>
+    /// <exception cref="InvalidOperationException">Um detector próprio devolveu um trecho fora do texto.</exception>
+    public string AnonymizeText(string text)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(text);
+        return _context.Scanner.Scan(text);
+    }
+
     /// <summary>Envolve o reader de uma consulta: os valores lidos dele saem anonimizados.</summary>
     /// <remarks>
     /// <para>
@@ -82,9 +107,9 @@ public sealed class Anonymizer : IDisposable
     /// biblioteca e podem conter valores.
     /// </para>
     /// <para>
-    /// Enquanto a varredura de texto livre não tem detectores, colunas de texto não classificadas passam
-    /// intactas. Valores que não são do tipo da coluna (um CPF com dígito verificador errado) também passam
-    /// como estão. Já um valor do tipo cujo substituto não cabe no tipo CLR da coluna (um CPF numa coluna
+    /// Colunas de texto não classificadas (e as de <see cref="AnonymizerBuilder.ScanColumn"/>) passam pela
+    /// varredura de texto livre, como em <see cref="AnonymizeText"/>. Valores que não são do tipo da coluna
+    /// (um CPF com dígito verificador errado) passam como estão. Já um valor do tipo cujo substituto não cabe no tipo CLR da coluna (um CPF numa coluna
     /// <see cref="int"/>) sai como <see cref="DBNull"/>, para que o original não saia intacto.
     /// </para>
     /// </remarks>

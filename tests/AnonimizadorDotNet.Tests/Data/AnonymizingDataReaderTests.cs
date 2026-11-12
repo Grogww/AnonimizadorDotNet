@@ -5,6 +5,7 @@ using System.Reflection;
 using AnonimizadorDotNet.Classification;
 using AnonimizadorDotNet.Classification.Rules;
 using AnonimizadorDotNet.Data;
+using AnonimizadorDotNet.Detection;
 using AnonimizadorDotNet.Tests.Transformation;
 using AnonimizadorDotNet.Transformation;
 
@@ -345,7 +346,7 @@ public sealed class AnonymizingDataReaderTests : IDisposable
         new(new TestReader(SchemaMode.Native, table), Context(rules));
 
     private ReaderContext Context(ColumnRuleSet? rules = null, UnclassifiedBehavior behavior = UnclassifiedBehavior.Pass) =>
-        new(new ColumnClassifier(_transformers, rules, behavior), PassThroughScanner.Instance);
+        new(new ColumnClassifier(_transformers, rules, behavior), new TextScanner(_transformers));
 
     private string Expected(DocumentType type, string value) =>
         _transformers[type].TryTransform(value, ValueKind.Text, out string? substitute)

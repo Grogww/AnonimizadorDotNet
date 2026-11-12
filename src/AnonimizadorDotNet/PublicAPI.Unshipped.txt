@@ -1,10 +1,12 @@
 #nullable enable
 AnonimizadorDotNet.Anonymizer
+AnonimizadorDotNet.Anonymizer.AnonymizeText(string! text) -> string!
 AnonimizadorDotNet.Anonymizer.Dispose() -> void
 AnonimizadorDotNet.Anonymizer.TryAnonymize(System.ReadOnlySpan<char> value, string! type, AnonimizadorDotNet.ValueKind kind, out string? substitute) -> bool
 AnonimizadorDotNet.Anonymizer.TryAnonymize(System.ReadOnlySpan<char> value, string! type, out string? substitute) -> bool
 AnonimizadorDotNet.Anonymizer.Wrap(System.Data.Common.DbDataReader! reader) -> System.Data.Common.DbDataReader!
 AnonimizadorDotNet.AnonymizerBuilder
+AnonimizadorDotNet.AnonymizerBuilder.AddDetector(AnonimizadorDotNet.Detection.ITextDetector! detector) -> AnonimizadorDotNet.AnonymizerBuilder!
 AnonimizadorDotNet.AnonymizerBuilder.AddTransformer(AnonimizadorDotNet.Transformation.IValueTransformer! transformer) -> AnonimizadorDotNet.AnonymizerBuilder!
 AnonimizadorDotNet.AnonymizerBuilder.AnonymizerBuilder() -> void
 AnonimizadorDotNet.AnonymizerBuilder.Build() -> AnonimizadorDotNet.Anonymizer!

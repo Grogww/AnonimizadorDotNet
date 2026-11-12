@@ -137,4 +137,104 @@ public sealed class AnonymizerTests : IDisposable
 
     [Fact]
     public void Wrap_ReaderNulo_Falha() => Assert.Throws<ArgumentNullException>(() => _anonymizer.Wrap(null!));
+
+    [Fact]
+    public void AnonymizeText_UsaOsMesmosSubstitutosDoTryAnonymize()
+    {
+        Assert.True(_anonymizer.TryAnonymize(MaskedCpf, PersonalDataTypes.Cpf, out string? cpf));
+        Assert.True(_anonymizer.TryAnonymize("maria@gmail.com", PersonalDataTypes.Email, out string? email));
+
+        string result = _anonymizer.AnonymizeText($"Cliente {MaskedCpf}, contato maria@gmail.com.");
+
+        Assert.Equal($"Cliente {cpf}, contato {email}.", result);
+    }
+
+    [Fact]
+    public void AnonymizeText_SemDocumento_DevolveOMesmoTexto()
+    {
+        const string text = "nada pessoal aqui, só o pedido 42";
+        Assert.Same(text, _anonymizer.AnonymizeText(text));
+        Assert.Throws<ArgumentNullException>(() => _anonymizer.AnonymizeText(null!));
+    }
+
+    [Fact]
+    public void Juncao_CpfNoTextoLivre_GeraOMesmoSubstitutoDaColuna()
+    {
+        DataTable table = Tables.Create(
+            "Clientes",
+            [("Cpf", typeof(string)), ("Observacao", typeof(string))],
+            [MaskedCpf, $"cliente pediu revisão do CPF {Cpf} e do e-mail maria@gmail.com"]);
+
+        using DbDataReader reader = _anonymizer.Wrap(new TestReader(SchemaMode.Native, table));
+        Assert.True(reader.Read());
+        string fromColumn = reader.GetString(0);
+        string fromText = reader.GetString(1);
+
+        string unmasked = fromColumn.Replace(".", string.Empty, StringComparison.Ordinal).Replace("-", string.Empty, StringComparison.Ordinal);
+        Assert.Equal(ReferenceSubstitutes.Cpf(Cpf), unmasked);
+        Assert.Contains($"do CPF {unmasked} e do e-mail ", fromText, StringComparison.Ordinal);
+        Assert.DoesNotContain("maria@gmail.com", fromText, StringComparison.Ordinal);
+        Assert.Equal(fromText, reader.GetFieldValue<string>(1));
+        Assert.Equal(fromText, reader.GetTextReader(1).ReadToEnd());
+    }
+
+    [Theory]
+    [InlineData(SchemaMode.Native)]
+    [InlineData(SchemaMode.Missing)]
+    public void ColunaComAliasQueEscondeOCpf_EVarrida(SchemaMode mode)
+    {
+        // SELECT cpf AS x: sem a origem do provedor, o nome não diz nada; a varredura protege o valor.
+        DataTable table = Tables.Create("Resultado", [("x", typeof(string))], [MaskedCpf]);
+
+        using DbDataReader reader = _anonymizer.Wrap(new TestReader(mode, table));
+        Assert.True(reader.Read());
+
+        Assert.True(_anonymizer.TryAnonymize(MaskedCpf, PersonalDataTypes.Cpf, out string? expected));
+        Assert.Equal(expected, reader.GetString(0));
+    }
+
+    [Fact]
+    public void PoliticaBlock_TextoNaoClassificadoContinuaBloqueado_ScanColumnVarre()
+    {
+        DataTable table = Tables.Create(
+            "Clientes",
+            [("Observacao", typeof(string)), ("Historico", typeof(string))],
+            [$"CPF {Cpf}", $"CPF {Cpf}"]);
+        using Anonymizer anonymizer = new AnonymizerBuilder()
+            .UseKey(ReferenceSubstitutes.MasterKey)
+            .WithUnclassifiedPolicy(UnclassifiedPolicy.Block)
+            .ScanColumn("Historico")
+            .Build();
+
+        using DbDataReader reader = anonymizer.Wrap(new TestReader(SchemaMode.Native, table));
+        Assert.True(reader.Read());
+
+        Assert.True(reader.IsDBNull(0));
+        Assert.Equal($"CPF {ReferenceSubstitutes.Cpf(Cpf)}", reader.GetString(1));
+    }
+
+    [Fact]
+    public void DetectorProprio_EAplicadoNoTextoENoReader()
+    {
+        using Anonymizer anonymizer = new AnonymizerBuilder()
+            .UseKey(ReferenceSubstitutes.MasterKey)
+            .AddTransformer(new AnonymizerBuilderTests.UpperTransformer("matricula"))
+            .AddDetector(new AnonymizerBuilderTests.PrefixDetector("matricula", "ra-"))
+            .Build();
+
+        Assert.Equal("aluno RA-123 aprovado", anonymizer.AnonymizeText("aluno ra-123 aprovado"));
+
+        DataTable table = Tables.Create("Alunos", [("Descricao", typeof(string))], ["aluno ra-123 aprovado"]);
+        using DbDataReader reader = anonymizer.Wrap(new TestReader(SchemaMode.Native, table));
+        Assert.True(reader.Read());
+        Assert.Equal("aluno RA-123 aprovado", reader.GetString(0));
+    }
+
+    [Fact]
+    public void AnonymizeText_Descartado_Falha()
+    {
+        Anonymizer anonymizer = new AnonymizerBuilder().UseKey(ReferenceSubstitutes.MasterKey).Build();
+        anonymizer.Dispose();
+        Assert.Throws<ObjectDisposedException>(() => anonymizer.AnonymizeText(Cpf));
+    }
 }

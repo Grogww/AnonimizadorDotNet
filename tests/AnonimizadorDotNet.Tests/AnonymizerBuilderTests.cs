@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using AnonimizadorDotNet.Detection;
 using AnonimizadorDotNet.Tests.Transformation;
 using AnonimizadorDotNet.Transformation;
 using CsCheck;
@@ -129,6 +130,28 @@ public sealed class AnonymizerBuilderTests
         Assert.Throws<ArgumentOutOfRangeException>(() => new AnonymizerBuilder().WithUnclassifiedPolicy((UnclassifiedPolicy)7));
 
     [Fact]
+    public void Detector_DeTipoSemTransformador_FalhaNoBuild()
+    {
+        AnonymizerBuilder builder = new AnonymizerBuilder()
+            .UseKey(ReferenceSubstitutes.MasterKey)
+            .AddDetector(new PrefixDetector("matricula", "ra-"));
+
+        Assert.Throws<InvalidOperationException>(builder.Build);
+    }
+
+    [Fact]
+    public void Detector_RepetidoOuSemTipo_Falha()
+    {
+        var detector = new PrefixDetector("cpf", "x");
+        AnonymizerBuilder builder = new AnonymizerBuilder().AddDetector(detector);
+
+        Assert.Throws<ArgumentException>(() => builder.AddDetector(detector));
+        Assert.Throws<ArgumentException>(() => builder.AddDetector(new PrefixDetector(" ", "x")));
+        Assert.Throws<ArgumentNullException>(() => builder.AddDetector(null!));
+        builder.AddDetector(new PrefixDetector("CPF", "y"));
+    }
+
+    [Fact]
     public void ToString_NaoMostraAChave()
     {
         AnonymizerBuilder builder = new AnonymizerBuilder().UseKey(ReferenceSubstitutes.MasterKey);
@@ -148,6 +171,24 @@ public sealed class AnonymizerBuilderTests
         finally
         {
             Environment.SetEnvironmentVariable(name, null);
+        }
+    }
+
+    /// <summary>Encontra as palavras que começam com um prefixo.</summary>
+    internal sealed class PrefixDetector(string type, string prefix) : ITextDetector
+    {
+        public string Type { get; } = type;
+
+        public IEnumerable<TextMatch> Detect(string text)
+        {
+            int at = text.IndexOf(prefix, StringComparison.Ordinal);
+            while (at >= 0)
+            {
+                int end = text.IndexOf(' ', at);
+                end = end < 0 ? text.Length : end;
+                yield return new TextMatch(at, end - at);
+                at = text.IndexOf(prefix, end, StringComparison.Ordinal);
+            }
         }
     }
 
