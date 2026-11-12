@@ -84,7 +84,8 @@ public sealed class Anonymizer : IDisposable
     /// <para>
     /// Enquanto a varredura de texto livre não tem detectores, colunas de texto não classificadas passam
     /// intactas. Valores que não são do tipo da coluna (um CPF com dígito verificador errado) também passam
-    /// como estão.
+    /// como estão. Já um valor do tipo cujo substituto não cabe no tipo CLR da coluna (um CPF numa coluna
+    /// <see cref="int"/>) sai como <see cref="DBNull"/>, para que o original não saia intacto.
     /// </para>
     /// </remarks>
     /// <param name="reader">O reader da consulta, antes da primeira leitura.</param>
