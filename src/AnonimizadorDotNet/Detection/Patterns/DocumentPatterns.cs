@@ -7,7 +7,7 @@ namespace AnonimizadorDotNet.Detection.Patterns;
 /// <para>
 /// Os padrões só reconhecem a forma; a validação (dígito verificador, DDD, formato do e-mail) é do
 /// <c>XxxFormat.TryParse</c> de cada tipo. Usam <c>[0-9]</c> e não <c>\d</c>, que no .NET aceita dígitos de
-/// qualquer escrita.
+/// qualquer escrita. O e-mail não tem regex: o <c>EmailDetector</c> parte de cada <c>@</c>.
 /// </para>
 /// <para>
 /// Limites de palavra: um número não pode ter dígito colado antes nem depois, nem um separador
@@ -41,4 +41,14 @@ internal static partial class DocumentPatterns
         AlphanumericStart + @"[0-9A-Za-z]{2}\.?[0-9A-Za-z]{3}\.?[0-9A-Za-z]{3}/?[0-9A-Za-z]{4}-?[0-9]{2}" + AlphanumericEnd,
         Options)]
     public static partial Regex AlphanumericCnpj();
+
+    /// <summary>
+    /// Telefone com DDD: <c>+55</c> ou <c>55</c> opcional, DDD com ou sem parênteses, o 9 do celular
+    /// opcional e o assinante de 8 dígitos, com espaço, ponto ou hífen entre as partes. O grupo
+    /// <c>national</c> é o número sem o código do país.
+    /// </summary>
+    [GeneratedRegex(
+        NumberStart + @"(?:\+?55[ .-]?)?(?<national>(?:\([0-9]{2}\) ?|[0-9]{2}[ .-]?)(?:9[ .-]?)?[0-9]{4}[ .-]?[0-9]{4})" + NumberEnd,
+        Options)]
+    public static partial Regex Phone();
 }
