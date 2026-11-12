@@ -95,6 +95,7 @@ produto para usos mais amplos e para a publicação externa. O que não está na
 | Coluna `cpf_cnpj`/`documento` | Tenta CPF e depois CNPJ; o tamanho do valor desambigua |
 | Entrada do reader | `DbDataReader` (todo provedor ADO.NET e o Dapper devolvem um); o tipo concreto do reader é interno |
 | Coluna bloqueada | Sai como `DBNull`, sem ler o original |
+| Substituto que não cabe no tipo da coluna | Sai como `DBNull` (devolver o original entregaria um documento válido intacto) |
 | Chave na variável de ambiente | Base64 de ao menos 32 bytes |
 | Builder | Uso único e descartável; para outro anonimizador, outro builder com a mesma chave |
 | E-mail em coluna `UNIQUE` | Só documentado na v1 (colisões possíveis); tratativa no backlog |
@@ -259,7 +260,8 @@ Detectores e transformadores são **extensíveis**: o consumidor registra tipos 
 ## Decisões em aberto
 
 - **Nome do pacote NuGet:** preferência por manter `AnonimizadorDotNet`; verificar disponibilidade.
-- **Valor inválido numa coluna classificada** (CPF com DV errado, texto que não é do tipo) e substituto que
-  não cabe no tipo da coluna: provisoriamente passam como estão, porque `NULL` quebraria e fragmentaria os
-  dados. Risco: um CPF real digitado com erro continua sendo dado pessoal e, no caso MCP, chegaria ao LLM.
-  A decisão definitiva fica para o uso real.
+- **Valor inválido numa coluna classificada** (CPF com DV errado, texto que não é do tipo): provisoriamente
+  passa como está, porque `NULL` quebraria e fragmentaria os dados. Risco: um CPF real digitado com erro
+  continua sendo dado pessoal e, no caso MCP, chegaria ao LLM. A decisão definitiva fica para o uso real.
+  Já o substituto que não cabe no tipo da coluna (um CPF válido numa coluna `int`) sai como `DBNull`: ali o
+  original seria um documento válido.

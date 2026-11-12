@@ -188,9 +188,10 @@ teste de reflexão falha se o .NET acrescentar um novo.
 
 Por ação: `Pass` vai direto ao reader original (inclusive os getters tipados); `Block` devolve `DBNull` sem
 ler o original; `Transform` usa o primeiro transformador que aceitar o valor; `Scan` passa pelo
-`ITextScanner`. Metadados e tipos CLR passam intactos. Um valor que nenhum transformador aceita, ou cujo
-substituto não cabe no tipo da coluna, passa como está (decisão provisória, num único ponto:
-`AnonymizingDataReader.Resolve`).
+`ITextScanner`. Metadados e tipos CLR passam intactos. Um valor que nenhum transformador aceita passa como
+está (decisão provisória); um valor aceito cujo substituto não cabe no tipo da coluna (um CPF válido numa
+coluna `int`) sai como `DBNull`, para que um documento válido nunca saia intacto. As duas regras ficam num
+único ponto: `AnonymizingDataReader.Transform`.
 
 ### API pública (raiz)
 

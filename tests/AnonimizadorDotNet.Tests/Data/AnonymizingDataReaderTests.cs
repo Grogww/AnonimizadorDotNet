@@ -153,13 +153,40 @@ public sealed class AnonymizingDataReaderTests : IDisposable
     }
 
     [Fact]
-    public void SubstitutoQueNaoCabeNoTipo_PassaComoEsta()
+    public void SubstitutoQueNaoCabeNoTipo_ViraNulo()
     {
         DataTable table = Tables.Create("Clientes", [("Codigo", typeof(int))], [123]);
         using AnonymizingDataReader reader = Wrap(table, new ColumnRuleSet([ColumnRule.Transform("Codigo", "grande")]));
         Assert.True(reader.Read());
 
-        Assert.Equal(123, reader.GetInt32(0));
+        Assert.True(reader.IsDBNull(0));
+        Assert.Same(DBNull.Value, reader.GetValue(0));
+        Assert.Throws<InvalidCastException>(() => reader.GetInt32(0));
+    }
+
+    [Fact]
+    public void CpfValidoEmColunaInt_NuncaSaiIntacto()
+    {
+        // 001.234.567-97 cabe num int; o substituto, com 11 dígitos sem zeros à esquerda, não cabe.
+        const int RealCpf = 123456797;
+        DataTable table = Tables.Create("Clientes", [("Cpf", typeof(int))], [RealCpf]);
+        using AnonymizingDataReader reader = Wrap(table);
+        Assert.True(reader.Read());
+
+        long substitute = long.Parse(ReferenceSubstitutes.Cpf("00123456797"), System.Globalization.CultureInfo.InvariantCulture);
+        Assert.True(substitute > int.MaxValue, "O caso de teste precisa de um substituto que não caiba no int.");
+        Assert.True(reader.IsDBNull(0));
+        Assert.Same(DBNull.Value, reader.GetValue(0));
+    }
+
+    [Fact]
+    public void DecimalComCasas_NaoEDocumentoEPassaComoEsta()
+    {
+        DataTable table = Tables.Create("Clientes", [("Cpf", typeof(decimal))], [12.5m]);
+        using AnonymizingDataReader reader = Wrap(table);
+        Assert.True(reader.Read());
+
+        Assert.Equal(12.5m, reader.GetDecimal(0));
     }
 
     [Fact]

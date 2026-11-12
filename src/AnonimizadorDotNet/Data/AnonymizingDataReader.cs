@@ -19,8 +19,9 @@ namespace AnonimizadorDotNet.Data;
 /// <item><description>passar: todos os métodos vão direto ao reader original;</description></item>
 /// <item><description>bloquear: o valor é <see cref="DBNull"/>, sem ler o original;</description></item>
 /// <item><description>
-/// transformar: o substituto do primeiro transformador que aceitar o valor. Um valor que nenhum aceita, ou
-/// cujo substituto não cabe no tipo da coluna, passa como está (decisão provisória, ver <see cref="Resolve"/>);
+/// transformar: o substituto do primeiro transformador que aceitar o valor. Um valor que nenhum aceita passa
+/// como está (decisão provisória); um aceito cujo substituto não cabe no tipo da coluna vira
+/// <see cref="DBNull"/>, para não deixar sair o original (ver <see cref="Resolve"/>);
 /// </description></item>
 /// <item><description>varrer: o texto passa pelo <see cref="ITextScanner"/>.</description></item>
 /// </list>
@@ -360,9 +361,15 @@ internal sealed class AnonymizingDataReader : DbDataReader, IDbColumnSchemaGener
 
     /// <summary>O valor anonimizado de uma coluna que não é passada, calculado uma vez por linha.</summary>
     /// <remarks>
-    /// Decisão provisória (D2/D6 do plano da etapa 6): um valor que nenhum transformador aceita (CPF com DV
-    /// errado, texto que não é do tipo) ou cujo substituto não cabe no tipo da coluna passa como está. É o
-    /// único ponto a mudar se a decisão for outra.
+    /// <para>
+    /// Valor que nenhum transformador aceita (CPF com DV errado, texto que não é do tipo): passa como está
+    /// (decisão provisória D2 do plano da etapa 6; <c>NULL</c> quebraria os dados).
+    /// </para>
+    /// <para>
+    /// Valor aceito cujo substituto não cabe no tipo da coluna (um CPF válido numa coluna <see cref="int"/>):
+    /// vira <see cref="DBNull"/> (D6). Devolver o original entregaria um documento válido intacto.
+    /// </para>
+    /// <para>As duas regras ficam em <see cref="Transform"/>, o único ponto a mudar se a decisão for outra.</para>
     /// </remarks>
     private object Resolve(int ordinal)
     {
@@ -403,7 +410,7 @@ internal sealed class AnonymizingDataReader : DbDataReader, IDbColumnSchemaGener
         {
             if (transformer.TryTransform(text, kind, out string? substitute))
             {
-                return ValueCodec.TryDecode(substitute, raw, out object decoded) ? decoded : raw;
+                return ValueCodec.TryDecode(substitute, raw, out object decoded) ? decoded : DBNull.Value;
             }
         }
 
