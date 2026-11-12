@@ -24,6 +24,19 @@ Itens fora do escopo da v1. Cada item deve virar uma issue quando o repositório
 - Escrita assistida no banco (gerar os `UPDATE`s, ordem por constraints, CPF como chave primária): por
   enquanto fica no script do consumidor.
 
+### Gravação no banco (pendências da etapa 6)
+
+Descobertas ao planejar o `AnonymizingDataReader`; afetam o script que grava os substitutos com `UPDATE`.
+Na v1 só são documentadas.
+
+- **Prioridade alta — substituto maior que a coluna.** Nome e e-mail substitutos podem passar do
+  `varchar(n)` (`ColumnSize` do esquema). Na v1 a lib não trunca nem bloqueia, e o `UPDATE` falha. Analisar
+  com o uso real: respeitar o `ColumnSize` na seleção por HMAC (sortear só itens que cabem), truncar de
+  forma determinística ou avisar antes de gravar. Qualquer opção que mude os substitutos exige decisão.
+- **E-mail em coluna `UNIQUE`.** A seleção por HMAC admite colisões, e dois e-mails reais podem virar o
+  mesmo substituto, o que derruba o `UPDATE`. Possível tratativa: sufixo derivado por FF1 na parte local.
+  Muda todos os substitutos de e-mail, então só com decisão (e, se for depois da 1.0, nova versão).
+
 ### Classificação e operação
 
 - Amostragem de conteúdo na classificação (ex.: maioria das amostras é CPF com DV válido).
