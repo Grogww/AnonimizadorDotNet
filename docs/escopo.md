@@ -71,7 +71,8 @@ produto para usos mais amplos e para a publicação externa. O que não está na
 | 3. Documentos (`Documents`, `Resources`) | Concluída: CPF, CNPJ numérico e alfanumérico, telefone, nome e e-mail, com representação original, valores proibidos e dicionários embutidos |
 | 4. Transformação (`Transformation`, `Cryptography/Keys/KeyRing`, `Cryptography/Fpe/Ff1Pool`) | Concluída: um transformador por tipo ("valor + tipo → substituto"), interface pública `IValueTransformer`, chave mestra descartada após derivar as subchaves, pool de instâncias do FF1 entre threads, valores dourados conferidos contra o BouncyCastle |
 | 5. Classificação por coluna (`Classification`) | Concluída: regras explícitas por `schema.tabela.coluna`, proteção de chaves internas, heurística por nome, varredura de texto e política, decididas uma vez por resultado a partir do esquema |
-| 6–8. `IDataReader` + API mínima, detecção em texto livre, documentação e `0.x` | Não iniciadas |
+| 6. `IDataReader` e API mínima (`Data`, raiz) | Concluída: `AnonymizingDataReader` fechado por padrão (todos os membros de leitura sobrescritos, verificado por reflexão), tipo CLR e metadados preservados, `AnonymizerBuilder` de uso único, chave direta ou por variável de ambiente (Base64) |
+| 7–8. Detecção em texto livre, documentação e `0.x` | Não iniciadas; nada é publicado no NuGet antes do fim da etapa 7 (o uso local, por referência de projeto ou pacote local, é livre) |
 
 ### Depois da v1
 
@@ -92,6 +93,12 @@ produto para usos mais amplos e para a publicação externa. O que não está na
 | Licença | Apache 2.0 (inclui concessão de patentes dos contribuidores) |
 | Política para colunas não classificadas | `Passar` por padrão, com varredura das colunas de texto; `Bloquear` bloqueia também o texto não classificado |
 | Coluna `cpf_cnpj`/`documento` | Tenta CPF e depois CNPJ; o tamanho do valor desambigua |
+| Entrada do reader | `DbDataReader` (todo provedor ADO.NET e o Dapper devolvem um); o tipo concreto do reader é interno |
+| Coluna bloqueada | Sai como `DBNull`, sem ler o original |
+| Chave na variável de ambiente | Base64 de ao menos 32 bytes |
+| Builder | Uso único e descartável; para outro anonimizador, outro builder com a mesma chave |
+| E-mail em coluna `UNIQUE` | Só documentado na v1 (colisões possíveis); tratativa no backlog |
+| Substituto maior que a coluna | O `UPDATE` falha normalmente; ponto de correção no backlog |
 | Idioma | Híbrido: API (tipos, métodos, namespaces) em inglês; termos brasileiros sem tradução (`Cpf`, `Cnpj`, `Cep`); documentação XML, README, mensagens de erro e docs do projeto em português |
 
 ## Princípios
@@ -252,3 +259,7 @@ Detectores e transformadores são **extensíveis**: o consumidor registra tipos 
 ## Decisões em aberto
 
 - **Nome do pacote NuGet:** preferência por manter `AnonimizadorDotNet`; verificar disponibilidade.
+- **Valor inválido numa coluna classificada** (CPF com DV errado, texto que não é do tipo) e substituto que
+  não cabe no tipo da coluna: provisoriamente passam como estão, porque `NULL` quebraria e fragmentaria os
+  dados. Risco: um CPF real digitado com erro continua sendo dado pessoal e, no caso MCP, chegaria ao LLM.
+  A decisão definitiva fica para o uso real.

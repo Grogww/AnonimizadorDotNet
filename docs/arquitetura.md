@@ -88,9 +88,10 @@ camadas de baixo não conhecem as de cima.
 
 | Área | Responsabilidade | Visibilidade |
 |---|---|---|
-| Raiz | `AnonymizerBuilder`, anonimizador direto, sessão, provedor de chave, `UnclassifiedPolicy` | **Pública** |
-| `Json` | Percorre o documento, aplica a classificação por caminho e monta a saída | `internal` |
-| `Sessions` | Registro `substituto → original` e restauração | Sessão pública, registro interno |
+| Raiz | `AnonymizerBuilder`, `Anonymizer` (valor individual e reader), `UnclassifiedPolicy`, `PersonalDataTypes`; sessão na v1.x | **Pública** |
+| `Data` | Envolve o `DbDataReader`, aplica a decisão de cada coluna aos valores | `internal` |
+| `Json` (v1.x) | Percorre o documento, aplica a classificação por caminho e monta a saída | `internal` |
+| `Sessions` (v1.x) | Registro `substituto → original` e restauração | Sessão pública, registro interno |
 | `Classification` | Regras em ordem de precedência (explícita → nome → texto livre → política) | Configuração pública, motor interno |
 | `Detection` | Detectores por padrão para varredura de texto livre | `internal` + interface pública de extensão |
 | `Transformation` | Liga documento e criptografia: gera o substituto de um valor | `internal` + interface pública de extensão |
@@ -100,8 +101,8 @@ camadas de baixo não conhecem as de cima.
 
 Consequências:
 
-- Novos formatos de entrada da v1.x (CSV, `IDataReader`) entram como mais um "percorredor" ao lado de
-  `Json`, sem alterar as camadas de baixo.
+- Novos formatos de entrada da v1.x (JSON, CSV) entram como mais um "percorredor" ao lado de `Data`, sem
+  alterar as camadas de baixo.
 - **Subchave por tipo:** a chave mestra é derivada em uma subchave por tipo de documento, para que o mesmo
   número cifrado como CPF e como telefone use permutações independentes.
 
@@ -170,3 +171,50 @@ pode acrescentar proteção (uma regra de transformação ou a heurística), nun
 `telefone AS id` continue anonimizado.
 
 Uma decisão não guarda valores nem nomes de coluna, e o classificador pode ser usado por várias threads.
+
+### `Data`
+
+Aplica aos valores a decisão que `Classification` tomou a partir do esquema. É a fronteira por onde o dado
+sai, e por isso é **fechada por padrão**: todo membro de `DbDataReader` que lê valor é sobrescrito, e um
+teste de reflexão falha se o .NET acrescentar um novo.
+
+| Componente | Papel |
+|---|---|
+| `ColumnSchema` | `GetColumnSchema()` → `ColumnInfo[]`; sem esquema do provedor, só nome e tipo CLR (a classificação ainda vale pelo nome) |
+| `ValueCodec` | Valor CLR ↔ texto para os transformadores: texto como `ValueKind.Text`, inteiros e `decimal` sem casas como `ValueKind.Number`; volta pelo tipo original, com verificação de faixa |
+| `ITextScanner` | Varredura de texto livre; até a etapa 7, `PassThroughScanner` devolve o texto intacto |
+| `ReaderContext` | Classificador e varredura compartilhados pelos readers de um anonimizador; encerrado no descarte dele |
+| `AnonymizingDataReader` | Classifica a cada resultado e calcula cada valor uma vez por linha |
+
+Por ação: `Pass` vai direto ao reader original (inclusive os getters tipados); `Block` devolve `DBNull` sem
+ler o original; `Transform` usa o primeiro transformador que aceitar o valor; `Scan` passa pelo
+`ITextScanner`. Metadados e tipos CLR passam intactos. Um valor que nenhum transformador aceita, ou cujo
+substituto não cabe no tipo da coluna, passa como está (decisão provisória, num único ponto:
+`AnonymizingDataReader.Resolve`).
+
+### API pública (raiz)
+
+```csharp
+using var anonymizer = new AnonymizerBuilder()
+    .UseKeyFromEnvironment("ANONIMIZADOR_CHAVE")       // Base64 de ao menos 32 bytes; ou UseKey(bytes)
+    .TransformColumn("dbo.Clientes.doc", PersonalDataTypes.Cpf)
+    .IgnoreColumn("observacao_interna")
+    .ScanColumn("Pedidos.comentario")
+    .WithUnclassifiedPolicy(UnclassifiedPolicy.Pass)
+    .AddTransformer(meuTransformador)                  // IValueTransformer próprio
+    .Build();
+
+anonymizer.TryAnonymize("123.456.789-09", PersonalDataTypes.Cpf, out string? cpf);
+using DbDataReader reader = anonymizer.Wrap(command.ExecuteReader());
+```
+
+| Tipo | Contrato |
+|---|---|
+| `AnonymizerBuilder` | Uso único: `Build` zera a cópia da chave (em memória fixada) e encerra o builder, mesmo se falhar. Erros de coluna e de tipo próprio aparecem na hora (`ArgumentException`); os que dependem do conjunto (chave, tipo pedido por regra) no `Build` (`InvalidOperationException`) |
+| `Anonymizer` | Seguro para várias threads; `Dispose` zera as subchaves e faz os readers criados por ele lançarem `ObjectDisposedException` |
+| `Wrap` | Devolve um `DbDataReader` (o tipo concreto é interno) dono do reader original |
+| `UnclassifiedPolicy` | `Pass` (padrão) ou `Block`, mapeada para o `UnclassifiedBehavior` interno |
+| `PersonalDataTypes` | Nomes dos tipos embutidos: `cpf`, `cnpj`, `phone`, `email`, `name` |
+
+Mensagens de exceção e `ToString()` nunca mostram valores nem a chave. Exceções do próprio provedor não
+passam pela biblioteca.
