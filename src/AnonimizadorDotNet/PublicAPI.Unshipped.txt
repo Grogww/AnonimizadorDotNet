@@ -1,7 +1,31 @@
 #nullable enable
+AnonimizadorDotNet.Anonymizer
+AnonimizadorDotNet.Anonymizer.Dispose() -> void
+AnonimizadorDotNet.Anonymizer.TryAnonymize(System.ReadOnlySpan<char> value, string! type, AnonimizadorDotNet.ValueKind kind, out string? substitute) -> bool
+AnonimizadorDotNet.Anonymizer.TryAnonymize(System.ReadOnlySpan<char> value, string! type, out string? substitute) -> bool
+AnonimizadorDotNet.Anonymizer.Wrap(System.Data.Common.DbDataReader! reader) -> System.Data.Common.DbDataReader!
+AnonimizadorDotNet.AnonymizerBuilder
+AnonimizadorDotNet.AnonymizerBuilder.AddTransformer(AnonimizadorDotNet.Transformation.IValueTransformer! transformer) -> AnonimizadorDotNet.AnonymizerBuilder!
+AnonimizadorDotNet.AnonymizerBuilder.AnonymizerBuilder() -> void
+AnonimizadorDotNet.AnonymizerBuilder.Build() -> AnonimizadorDotNet.Anonymizer!
+AnonimizadorDotNet.AnonymizerBuilder.IgnoreColumn(string! column) -> AnonimizadorDotNet.AnonymizerBuilder!
+AnonimizadorDotNet.AnonymizerBuilder.ScanColumn(string! column) -> AnonimizadorDotNet.AnonymizerBuilder!
+AnonimizadorDotNet.AnonymizerBuilder.TransformColumn(string! column, string! type) -> AnonimizadorDotNet.AnonymizerBuilder!
+AnonimizadorDotNet.AnonymizerBuilder.UseKey(System.ReadOnlySpan<byte> key) -> AnonimizadorDotNet.AnonymizerBuilder!
+AnonimizadorDotNet.AnonymizerBuilder.UseKeyFromEnvironment(string! variableName) -> AnonimizadorDotNet.AnonymizerBuilder!
+AnonimizadorDotNet.AnonymizerBuilder.WithUnclassifiedPolicy(AnonimizadorDotNet.UnclassifiedPolicy policy) -> AnonimizadorDotNet.AnonymizerBuilder!
+AnonimizadorDotNet.PersonalDataTypes
 AnonimizadorDotNet.Transformation.IValueTransformer
 AnonimizadorDotNet.Transformation.IValueTransformer.TryTransform(System.ReadOnlySpan<char> value, AnonimizadorDotNet.ValueKind kind, out string? substitute) -> bool
 AnonimizadorDotNet.Transformation.IValueTransformer.Type.get -> string!
+AnonimizadorDotNet.UnclassifiedPolicy
+AnonimizadorDotNet.UnclassifiedPolicy.Block = 1 -> AnonimizadorDotNet.UnclassifiedPolicy
+AnonimizadorDotNet.UnclassifiedPolicy.Pass = 0 -> AnonimizadorDotNet.UnclassifiedPolicy
 AnonimizadorDotNet.ValueKind
 AnonimizadorDotNet.ValueKind.Number = 1 -> AnonimizadorDotNet.ValueKind
 AnonimizadorDotNet.ValueKind.Text = 0 -> AnonimizadorDotNet.ValueKind
+const AnonimizadorDotNet.PersonalDataTypes.Cnpj = "cnpj" -> string!
+const AnonimizadorDotNet.PersonalDataTypes.Cpf = "cpf" -> string!
+const AnonimizadorDotNet.PersonalDataTypes.Email = "email" -> string!
+const AnonimizadorDotNet.PersonalDataTypes.Name = "name" -> string!
+const AnonimizadorDotNet.PersonalDataTypes.Phone = "phone" -> string!
